@@ -1,6 +1,7 @@
 MAPLE_ROOT=${HOME}/opt/maple/13
 MAPLE_BIN=${MAPLE_ROOT}/bin.X86_64_LINUX
 
+.PHONY: run
 
 test: ocamlOpenMaple.ml ocamlOpenMaple_stubs.c
 	LD_LIBRARY_PATH=${MAPLE_BIN} ocamlopt -o $@ \
@@ -9,4 +10,5 @@ test: ocamlOpenMaple.ml ocamlOpenMaple_stubs.c
 			-cclib -lmaplec \
 			$?
 
-
+run: test
+	LD_LIBRARY_PATH=${MAPLE_BIN} ./test
