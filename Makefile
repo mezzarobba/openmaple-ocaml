@@ -8,10 +8,10 @@ test: openMaple.mli openMaple_stubs.c test.ml
 			-ccopt -L${MAPLE_BIN} \
 			-ccopt -I${MAPLE_ROOT}/extern/include \
 			-cclib -lmaplec \
+			-cclib -lrt \
 			$?
-
-clean:
-	rm -f *.o *.cm? test
+	rm -f openMaple_stubs.o  test.o openMaple.cmi  test.cmi \
+	    test.cmx
 
 run: test
-	MAPLE_PATH=${MAPLE_BIN}/maple LD_LIBRARY_PATH=${MAPLE_BIN} ./test
+	MAPLE=${MAPLE_ROOT} LD_LIBRARY_PATH=${MAPLE_BIN} ./test
