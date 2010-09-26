@@ -89,25 +89,51 @@ RestartMaple_stub(void) {
  * custom blocks.  The following macro accesses the ALGEB part of such a
  * block. */
 
-#define ALGEB_val(v) (*((ALGEB *) Data_custom_val(v)))
+typedef struct ALGEB_wrapper {
+    ALGEB val;      /* the actual ALGEB object we want to access from Caml */
+    ALGEB ptr;  /* MaplePointer to the struct itself, needed to
+                       protect val from Maple garbage collection */
+} ALGEB_wrapper;
+
+//#define ALGEB_wrapper_val(v) (*((ALGEB_wrapper *) Data_custom_val(v)))
+
+static inline ALGEB_wrapper*
+ALGEB_wrapper_val(value v) {
+    return (ALGEB_wrapper *) Data_custom_val(v);
+}
+
+static inline ALGEB
+MaplePointer_to_ALGEB(ALGEB p) {
+    return  *((ALGEB *)MapleToPointer(kv, p));
+}
+
 
 /* Custom operations.  Quoting from the OCaml manual: "Do not use
  * CAMLparam to register the parameters to these functions, and do not
  * use CAMLreturn to return the result." */
 
 static void
-finalize_ALGEB(value v) {
-    MapleGcAllow(kv, ALGEB_val(v));
+finalize_ALGEB_wrapper(value v) {
+    printf("FINALIZE %lu\n", v);
+    MapleGcAllow(kv, ALGEB_wrapper_val(v)->ptr);
 }
 
-static struct custom_operations ALGEB_ops = {
-    "net.mezzarobba.openmaple-ocaml.ALGEB-v0.1",
-    &finalize_ALGEB,
+
+static struct custom_operations ALGEB_wrapper_ops = {
+    "net.mezzarobba.openmaple-ocaml.ALGEB_wrapper-v0.1",
+    &finalize_ALGEB_wrapper,
     custom_compare_default,
     custom_hash_default,
     custom_serialize_default,
     custom_deserialize_default
 };
+
+static void M_DECL
+mark_ALGEB(ALGEB maple_pointer) {
+    MapleGcMark(kv, MaplePointer_to_ALGEB(maple_pointer));
+}
+
+static const M_INT ALGEB_WRAPPER_POINTER = (M_INT) &mark_ALGEB;
 
 /* I see no simple estimate for the amount of resources on the Maple
  * size corresponding to an ALGEB value.  For now, let's finalize the
@@ -116,20 +142,16 @@ static struct custom_operations ALGEB_ops = {
 static const unsigned int MAX_DANGLING_ALGEB = 100;
 
 static value
-ALGEB_to_value(ALGEB a) {
-    /* Le manuel de Maple suggère d'utiliser MaplePointerSetMarkFunction
-     * plutôt que MapleGcProtect, mais je ne comprends pas comment on
-     * est censé faire pour les libérer un MaplePointer. J'ai
-     * l'impression que ceux-ci ne conviennent en fait que pour les
-     * objets externes (contenant eux-mêmes des pointeurs vers des
-     * objets Maple) qu'on veut mettre sous le contrôle du GC de Maple.
-     */
-    if (MapleGcIsProtected(kv, a) == TRUE)
-        caml_failwith("Unable to protect the value from Maple's GC");
-    MapleGcProtect(kv, a);
-    value v = caml_alloc_custom(&ALGEB_ops, sizeof(ALGEB), 1,
-                                                    MAX_DANGLING_ALGEB);
-    ALGEB_val(v) = a;
+new_ALGEB_wrapper(ALGEB a) {
+    value v = caml_alloc_custom(&ALGEB_wrapper_ops,
+                          sizeof(ALGEB_wrapper), 1, MAX_DANGLING_ALGEB);
+    ALGEB p = ToMaplePointer(kv, Data_custom_val(v), ALGEB_WRAPPER_POINTER);
+    if (MapleGcIsProtected(kv, p) == TRUE)
+        caml_failwith("Got a GcProtected MaplePointer from Maple?!");
+    MapleGcProtect(kv, p);
+    MaplePointerSetMarkFunction(kv, p, &mark_ALGEB);
+    ALGEB_wrapper_val(v)->val = a;
+    ALGEB_wrapper_val(v)->ptr = p;
     return v;
 }
 
@@ -137,7 +159,40 @@ CAMLprim value
 EvalMapleStatement_stub(value statement) {
     CAMLparam1(statement);
     ALGEB a = EvalMapleStatement(kv, String_val(statement));
-    CAMLreturn (ALGEB_to_value(a));
+    CAMLreturn (new_ALGEB_wrapper(a));
 }
 
+CAMLprim void 
+my_print (value v) {
+    CAMLparam1(v);
+    printf("would print %lu\n", v);
+    //MapleALGEB_Printf(kv, "%a\n", ALGEB_wrapper_val(v)->val);
+    CAMLreturn0;
+}
 
+#if 0
+
+/* Voyons comment protéger un objet via un MaplePointer */
+CAMLprim void
+ploum(void) {
+    CAMLparam0 ();
+    ALGEB * a = malloc(sizeof(ALGEB));
+    *a = EvalMapleStatement(kv, "diff(x^(x^(x^(x^x))), x, x, x, x, x);");
+    ALGEB p = ToMaplePointer(kv, a, MY_MAPLE_POINTER_TYPE);
+    EvalMapleStatement(kv, "a;");
+    EvalMapleStatement(kv, "a;");
+    EvalMapleStatement(kv, "a;");
+    EvalMapleStatement(kv, "a;");
+    EvalMapleStatement(kv, "a;");
+    EvalMapleStatement(kv, "a;");
+    if (MapleGcIsProtected(kv, p) == TRUE)
+        caml_failwith("deja protege");
+    //MapleGcProtect(kv, p);
+    MaplePointerSetMarkFunction(kv, p, &mark_ALGEB);
+    EvalMapleStatement(kv, "gc();");
+    MapleALGEB_Printf(kv, "%a", MaplePointer_to_ALGEB(p));
+    MapleALGEB_Printf(kv, "%a", p);
+    CAMLreturn0;
+}
+
+#endif
