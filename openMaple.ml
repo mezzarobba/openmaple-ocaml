@@ -33,4 +33,7 @@ let assign ?indices lhs rhs =
         let a = Array.of_list l in
           maple_assign_indexed lhs a rhs
 
-
+external algeb_of_int : int -> algeb = "ToMapleInteger_stub_unboxed"
+external int_of_algeb : algeb -> int = "MapleToM_INT_stub_unboxed"
+external algeb_of_nativeint : nativeint -> algeb = "ToMapleInteger_stub_native"
+external nativeint_of_algeb : algeb -> nativeint = "MapleToM_INT_stub_native"

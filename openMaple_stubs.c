@@ -214,7 +214,63 @@ MapleRaiseError2_stub(value msg, value arg1, value arg2) {
     CAMLreturn0;
 }
 
+/* OCaml (unboxed) int <-> ALGEB */
 
+CAMLprim value
+ToMapleInteger_stub_unboxed(value n) {
+    CAMLparam1(n);
+    ALGEB a = ToMapleInteger(kv, (M_INT) Long_val(n));
+    CAMLreturn (new_ALGEB_wrapper(a));
+}
+
+typedef struct {
+    ALGEB a;
+    M_INT res;
+} MapleToM_INT_wrapper_data;
+
+static void*
+MapleToM_INT_wrapper(void* arg) {
+    MapleToM_INT_wrapper_data *data = (MapleToM_INT_wrapper_data *) arg;
+    data->res = MapleToM_INT(kv, data->a);
+    return NULL;
+}
+
+CAMLprim value
+MapleToM_INT_stub_unboxed(value v) {
+    CAMLparam1(v);
+    MapleToM_INT_wrapper_data data;
+    data.a = ALGEB_val(v);
+    M_BOOL errflag = FALSE;
+    MapleTrapError(kv, &MapleToM_INT_wrapper, &data, &errflag);
+    if (errflag == TRUE || data.res < Min_long || data.res > Max_long)
+        caml_failwith("int_of_algeb");
+    CAMLreturn (Val_long(data.res));
+}
+
+/* nativeint <-> ALGEB */
+
+CAMLprim value
+ToMapleInteger_stub_native(value n) {
+    CAMLparam1(n);
+    ALGEB a = ToMapleInteger(kv, (M_INT) Nativeint_val(n));
+    CAMLreturn (new_ALGEB_wrapper(a));
+}
+
+CAMLprim value
+MapleToM_INT_stub_native(value v) {
+    CAMLparam1(v);
+    MapleToM_INT_wrapper_data data;
+    data.a = ALGEB_val(v);
+    M_BOOL errflag = FALSE;
+    MapleTrapError(kv, &MapleToM_INT_wrapper, &data, &errflag);
+    if (errflag == TRUE)
+        caml_failwith("nativeint_of_algeb");
+    CAMLreturn (caml_copy_nativeint(data.res));
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * Debug & test
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
 CAMLprim void 
 dbg_print (value v) {
