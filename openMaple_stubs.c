@@ -8,6 +8,7 @@
  * - encore plein de fonctions utiles à encapsuler
  * - eval_int, eval_bool, assign_int, assign_bool, etc. qui évitent de
  *   passer à Caml l'ALGEB intermédiaire
+ * - comparaison pour les objets ALGEB
  * - ...
  */
 
@@ -20,6 +21,7 @@
 #include <caml/alloc.h>
 #include <caml/custom.h>
 #include <caml/fail.h>
+#include <caml/callback.h>
 
 #include "maplec.h"
 
@@ -212,6 +214,8 @@ MapleAssignIndexed_stub(value name, /* array */ value indices, value rhs) {
  * Errors
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+/* Raising Maple errors */
+
 CAMLprim void
 MapleRaiseError_stub(value msg) {
     CAMLparam1(msg);
@@ -230,6 +234,32 @@ CAMLprim void
 MapleRaiseError2_stub(value msg, value arg1, value arg2) {
     CAMLparam3(msg, arg1, arg2);
     MapleRaiseError2(kv, String_val(msg), ALGEB_val(arg1), ALGEB_val(arg2));
+    CAMLreturn0;
+}
+
+/* Raising custom Caml exceptions */
+
+void
+raise_MapleError(char *msg) {
+    caml_raise_with_string(
+            *caml_named_value(
+                "net.mezzarobba.openmaple-ocaml.OpenMaple.MapleError"),
+            msg);
+}
+
+void
+raise_SyntaxError(long offset, char *msg) {
+    value args[] = { Val_long(offset), caml_copy_string(msg)};
+    caml_raise_with_args(
+            *caml_named_value(
+                "net.mezzarobba.openmaple-ocaml.OpenMaple.SyntaxError"),
+            2, args);
+}
+
+CAMLprim void
+ploum(void) {
+    CAMLparam0 ();
+    raise_SyntaxError(42, "coucou");
     CAMLreturn0;
 }
 

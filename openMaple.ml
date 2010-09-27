@@ -1,10 +1,22 @@
 (* Wrapper for the OpenMaple API *)
 
+external ploum : unit -> unit = "ploum"
+
 (* À moyen terme je voudrai sans doute avoir d'une part un wrapper « trivial »
  * pour OpenMaple (~ ce module), et d'autre part des utilitaires de plus haut
  * niveau reposant dessus. *)
 
 type algeb
+
+exception MapleError of string
+exception SyntaxError of int * string
+let _ = 
+  Callback.register_exception
+    "net.mezzarobba.openmaple-ocaml.OpenMaple.MapleError"
+    (MapleError "");
+  Callback.register_exception
+    "net.mezzarobba.openmaple-ocaml.OpenMaple.SyntaxError"
+    (SyntaxError (0, ""));
 
 external dbg_print : algeb -> unit = "dbg_print"
 
