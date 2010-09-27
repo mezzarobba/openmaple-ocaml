@@ -167,6 +167,10 @@ new_ALGEB_wrapper(ALGEB a) {
     return v;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * Eval, Assign and friends
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
+
 CAMLprim value
 EvalMapleStatement_stub(value statement) {
     CAMLparam1(statement);
@@ -193,6 +197,10 @@ MapleAssignIndexed_stub(value name, /* array */ value indices, value rhs) {
     CAMLreturn0;
 }
 
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * Errors
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
+
 CAMLprim void
 MapleRaiseError_stub(value msg) {
     CAMLparam1(msg);
@@ -213,6 +221,10 @@ MapleRaiseError2_stub(value msg, value arg1, value arg2) {
     MapleRaiseError2(kv, String_val(msg), ALGEB_val(arg1), ALGEB_val(arg2));
     CAMLreturn0;
 }
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * Conversions
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
 /* OCaml (unboxed) int <-> ALGEB */
 
