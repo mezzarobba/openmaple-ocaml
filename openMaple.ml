@@ -1,5 +1,9 @@
 (* Wrapper for the OpenMaple API *)
 
+(* À moyen terme je voudrai sans doute avoir d'une part un wrapper « trivial »
+ * pour OpenMaple (~ ce module), et d'autre part des utilitaires de plus haut
+ * niveau reposant dessus. *)
+
 type algeb
 
 external dbg_print : algeb -> unit = "dbg_print"
@@ -33,7 +37,13 @@ let assign ?indices lhs rhs =
         let a = Array.of_list l in
           maple_assign_indexed lhs a rhs
 
+(* créer plutôt un sous-module ALGEB avec of_int, to_int, etc. ? *)
+
 external algeb_of_int : int -> algeb = "ToMapleInteger_stub_unboxed"
 external int_of_algeb : algeb -> int = "MapleToM_INT_stub_unboxed"
 external algeb_of_nativeint : nativeint -> algeb = "ToMapleInteger_stub_native"
 external nativeint_of_algeb : algeb -> nativeint = "MapleToM_INT_stub_native"
+external algeb_of_int32 : int32 -> algeb = "ToMapleInteger32_stub"
+external int32_of_algeb : algeb -> int32 = "MapleToInteger32_stub"
+external algeb_of_int64 : int64 -> algeb = "ToMapleInteger64_stub"
+external int64_of_algeb : algeb -> int64 = "MapleToInteger64_stub"

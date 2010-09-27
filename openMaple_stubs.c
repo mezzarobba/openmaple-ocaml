@@ -268,6 +268,28 @@ MapleToM_INT_stub_native(value v) {
     CAMLreturn (caml_copy_nativeint(data.res));
 }
 
+/* int32, int64 <-> ALGEB */
+
+#define DEFINE_INTEGER_CONVERSIONS(SIZE, TO_MAPLE) \
+    CAMLprim value \
+    ToMapleInteger ## SIZE ## _stub(value n) { \
+        CAMLparam1(n); \
+        ALGEB a = TO_MAPLE(kv, (M_INT) Int ## SIZE ## _val(n)); \
+        CAMLreturn (new_ALGEB_wrapper(a)); \
+    } \
+    \
+    CAMLprim value \
+    MapleToInteger ## SIZE ## _stub(value v) { \
+        CAMLparam1(v); \
+        ALGEB a = ALGEB_val(v); \
+        if (!IsMapleInteger ## SIZE (kv, a)) \
+            caml_failwith("int" #SIZE "_of_algeb"); \
+        CAMLreturn (caml_copy_int ## SIZE(MapleToInteger ## SIZE(kv, a))); \
+    } 
+
+DEFINE_INTEGER_CONVERSIONS(32, ToMapleInteger)
+DEFINE_INTEGER_CONVERSIONS(64, ToMapleInteger)
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * Debug & test
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
