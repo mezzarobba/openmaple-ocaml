@@ -50,3 +50,8 @@ external int64_of_algeb : algeb -> int64 = "MapleToInteger64_stub"
 
 external string_of_algeb : algeb -> string = "MapleToString_stub"
 external algeb_of_string : string -> algeb = "ToMapleString_stub"
+
+external string_to_name : string -> bool -> algeb = "ToMapleName_stub"
+
+let global_name name = string_to_name name true
+let new_local_name name = string_to_name name false

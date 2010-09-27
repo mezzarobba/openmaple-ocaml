@@ -1,6 +1,16 @@
 /* OCaml OpenMaple wrapper stubs. C99.
  * Written by Marc Mezzarobba <marc@mezzarobba.net>, 2010 */
 
+/* TODO:
+ * - faire sortir les erreurs Maple comme des exceptions Caml
+ * - rediriger la sortie texte
+ * - callbacks divers
+ * - encore plein de fonctions utiles à encapsuler
+ * - eval_int, eval_bool, assign_int, assign_bool, etc. qui évitent de
+ *   passer à Caml l'ALGEB intermédiaire
+ * - ...
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -311,7 +321,7 @@ TO_MAPLE_INTEGER(64, ToMapleInteger64)
 
 #undef TO_MAPLE_INTEGER
 
-/* string */
+/* Strings and Maple names */
 
 CAMLprim value 
 ToMapleString_stub(value v) {
@@ -325,6 +335,16 @@ ToMapleString_stub(value v) {
 }
 
 MAPLE_TO(string_of_algeb, String, caml_copy_string)
+
+CAMLprim value
+ToMapleName_stub(value name, value global) {
+    CAMLparam2(name, global);
+    if (caml_string_length(name) > strlen(String_val(name)))
+        /* null char in the middle of the string */
+        caml_failwith("OpenMaple.string_to_name");
+    ALGEB res = ToMapleName(kv, String_val(name), Int_val(global));
+    CAMLreturn (new_ALGEB_wrapper(res));
+}
 
 #undef MAPLE_TO
 
