@@ -1,4 +1,5 @@
-/* C99 */
+/* OCaml OpenMaple wrapper stubs. C99.
+ * Written by Marc Mezzarobba <marc@mezzarobba.net>, 2010 */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,8 +18,8 @@
 
 /* OpenMaple does not support starting several kernels from the same
  * process (be it at once or one after another), although the API seems
- * to be designed with this feature in mind.  Let's keep things simple
- * and hide MKernelVectors from Caml. */
+ * to be designed to allow it in the future.  Let's keep things simple
+ * for now and hide MKernelVectors from Caml. */
 
 static MKernelVector kv;
 
@@ -70,7 +71,7 @@ RestartMaple_stub(void) {
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
- * The ALGEB type
+ * ALGEBs and ALGEBwrappers
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /* ALGEB is the C data type of pointers to abstract Maple objects.  The
@@ -85,17 +86,25 @@ RestartMaple_stub(void) {
  * still valid without risking crashing the Maple server.  So no "weak
  * Maple pointers".)
  *
- * To hand ALGEBs to OCaml, we protect them and encapsulate them in Caml
- * custom blocks.  The following macro accesses the ALGEB part of such a
- * block. */
+ * To hand ALGEBs to OCaml, we encapsulate them in OCaml custom blocks.
+ * Since the ALGEBs we receive from Maple may already be protected (this
+ * happens, e.g., when they represent small integers), we also include
+ * in each custom block a MaplePointer that we protect and use to mark
+ * our ALGEB using MaplePointerSetMarkFunction().
+ *
+ * (Restricting the use of MaplePointers to ALGEBs that are already
+ * protected when we get them would likely be more efficient, but the
+ * Maple manual recommends using MaplePointers when possible.  This is
+ * an easy change anyway.  Yet another (better?) strategy would be to
+ * use a single MaplePointer and keep track ourselves of the
+ * aliveness(?) of the wrappers.) */
 
+/* The data part of our custom blocks */
 typedef struct ALGEB_wrapper {
-    ALGEB val;      /* the actual ALGEB object we want to access from Caml */
+    ALGEB val;  /* the actual ALGEB object we want to access from Caml */
     ALGEB ptr;  /* MaplePointer to the struct itself, needed to
                        protect val from Maple garbage collection */
 } ALGEB_wrapper;
-
-//#define ALGEB_wrapper_val(v) (*((ALGEB_wrapper *) Data_custom_val(v)))
 
 static inline ALGEB_wrapper*
 ALGEB_wrapper_val(value v) {
@@ -103,10 +112,14 @@ ALGEB_wrapper_val(value v) {
 }
 
 static inline ALGEB
+ALGEB_val(value v) {
+    return ALGEB_wrapper_val(v)->val;
+}
+
+static inline ALGEB
 MaplePointer_to_ALGEB(ALGEB p) {
     return  *((ALGEB *)MapleToPointer(kv, p));
 }
-
 
 /* Custom operations.  Quoting from the OCaml manual: "Do not use
  * CAMLparam to register the parameters to these functions, and do not
@@ -117,7 +130,6 @@ finalize_ALGEB_wrapper(value v) {
     printf("FINALIZE %lu\n", v);
     MapleGcAllow(kv, ALGEB_wrapper_val(v)->ptr);
 }
-
 
 static struct custom_operations ALGEB_wrapper_ops = {
     "net.mezzarobba.openmaple-ocaml.ALGEB_wrapper-v0.1",
@@ -136,7 +148,7 @@ mark_ALGEB(ALGEB maple_pointer) {
 static const M_INT ALGEB_WRAPPER_POINTER = (M_INT) &mark_ALGEB;
 
 /* I see no simple estimate for the amount of resources on the Maple
- * size corresponding to an ALGEB value.  For now, let's finalize the
+ * side corresponding to an ALGEB value.  For now, let's finalize the
  * Caml values pointing to Maple objects quite aggressively.  Should we
  * also have OCaml's GC call Maple's?  (Damien?) */
 static const unsigned int MAX_DANGLING_ALGEB = 100;
@@ -162,11 +174,53 @@ EvalMapleStatement_stub(value statement) {
     CAMLreturn (new_ALGEB_wrapper(a));
 }
 
+/* faudra un wrapper qui prenne une chaîne... */
+CAMLprim void
+MapleAssign_stub(value lhs, value rhs) {
+    CAMLparam2(lhs, rhs);
+    MapleAssign(kv, ALGEB_val(lhs), ALGEB_val(rhs));
+    CAMLreturn0;
+}
+
+CAMLprim void
+MapleAssignIndexed_stub(value name, /* array */ value indices, value rhs) {
+    CAMLparam3(name, indices, rhs);
+    M_INT dim = Wosize_val(indices);
+    M_INT ind[dim];
+    for (int i=0; i<dim; i++)
+        ind[i] = Int_val(Field(indices, i));
+    MapleAssignIndexed(kv, ALGEB_val(name), dim, ind, ALGEB_val(rhs));
+    CAMLreturn0;
+}
+
+CAMLprim void
+MapleRaiseError_stub(value msg) {
+    CAMLparam1(msg);
+    MapleRaiseError(kv, String_val(msg));
+    CAMLreturn0;
+}
+
+CAMLprim void
+MapleRaiseError1_stub(value msg, value arg1) {
+    CAMLparam2(msg, arg1);
+    MapleRaiseError1(kv, String_val(msg), ALGEB_val(arg1));
+    CAMLreturn0;
+}
+
+CAMLprim void
+MapleRaiseError2_stub(value msg, value arg1, value arg2) {
+    CAMLparam3(msg, arg1, arg2);
+    MapleRaiseError2(kv, String_val(msg), ALGEB_val(arg1), ALGEB_val(arg2));
+    CAMLreturn0;
+}
+
+
+
 CAMLprim void 
-my_print (value v) {
+dbg_print (value v) {
     CAMLparam1(v);
-    printf("would print %lu\n", v);
-    //MapleALGEB_Printf(kv, "%a\n", ALGEB_wrapper_val(v)->val);
+    printf("wrapper=%lu, value=", v);
+    MapleALGEB_Printf(kv, "%a\n", ALGEB_wrapper_val(v)->val);
     CAMLreturn0;
 }
 
