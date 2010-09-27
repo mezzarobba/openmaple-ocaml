@@ -2,9 +2,8 @@
  * Written by Marc Mezzarobba <marc@mezzarobba.net>, 2010 */
 
 /* TODO:
- * - faire sortir les erreurs Maple comme des exceptions Caml
  * - rediriger la sortie texte
- * - callbacks divers
+ * - callbacks personnalisés
  * - encore plein de fonctions utiles à encapsuler
  * - eval_int, eval_bool, assign_int, assign_bool, etc. qui évitent de
  *   passer à Caml l'ALGEB intermédiaire
@@ -25,6 +24,25 @@
 
 #include "maplec.h"
 
+/* Raising custom Caml exceptions */
+
+void
+raise_MapleError(char *msg) {
+    caml_raise_with_string(
+            *caml_named_value(
+                "net.mezzarobba.openmaple-ocaml.OpenMaple.MapleError"),
+            msg);
+}
+
+void
+raise_SyntaxError(long offset, char *msg) {
+    value args[] = { Val_long(offset), caml_copy_string(msg)};
+    caml_raise_with_args(
+            *caml_named_value(
+                "net.mezzarobba.openmaple-ocaml.OpenMaple.SyntaxError"),
+            2, args);
+}
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * Running the Maple kernel
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -35,6 +53,23 @@
  * for now and hide MKernelVectors from Caml. */
 
 static MKernelVector kv;
+
+/* Callbacks */
+
+/* Il me faut en plus (ou à la place ?) de ce callback la possibilité
+ * d'enregistrer des callbacks depuis Caml. Ce n'est pas dur, il suffit
+ * de convenir d'un nom fixe pour chacun et d'utiliser
+ * Callback.register. */
+
+void M_DECL
+errorCallBack_raise_caml_exception(void *data, M_INT offset, char *msg) {
+    if (offset >= 0)
+        raise_SyntaxError(offset, msg);
+    else
+        raise_MapleError(msg);
+}
+
+/* Start, stop, restart */
 
 void
 StartMaple_stub(void) {
@@ -48,7 +83,7 @@ StartMaple_stub(void) {
     char err[err_size];  // used to report errors during initialization
     static MCallBackVectorDesc cb = {
         0,   /* textCallBack */
-        0,   /* errorCallBack not used */
+        &errorCallBack_raise_caml_exception,
         0,   /* statusCallBack not used */
         0,   /* readLineCallBack not used */
         0,   /* redirectCallBack not used */
@@ -211,10 +246,8 @@ MapleAssignIndexed_stub(value name, /* array */ value indices, value rhs) {
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
- * Errors
+ * Maple Errors
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
-
-/* Raising Maple errors */
 
 CAMLprim void
 MapleRaiseError_stub(value msg) {
@@ -234,32 +267,6 @@ CAMLprim void
 MapleRaiseError2_stub(value msg, value arg1, value arg2) {
     CAMLparam3(msg, arg1, arg2);
     MapleRaiseError2(kv, String_val(msg), ALGEB_val(arg1), ALGEB_val(arg2));
-    CAMLreturn0;
-}
-
-/* Raising custom Caml exceptions */
-
-void
-raise_MapleError(char *msg) {
-    caml_raise_with_string(
-            *caml_named_value(
-                "net.mezzarobba.openmaple-ocaml.OpenMaple.MapleError"),
-            msg);
-}
-
-void
-raise_SyntaxError(long offset, char *msg) {
-    value args[] = { Val_long(offset), caml_copy_string(msg)};
-    caml_raise_with_args(
-            *caml_named_value(
-                "net.mezzarobba.openmaple-ocaml.OpenMaple.SyntaxError"),
-            2, args);
-}
-
-CAMLprim void
-ploum(void) {
-    CAMLparam0 ();
-    raise_SyntaxError(42, "coucou");
     CAMLreturn0;
 }
 

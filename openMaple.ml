@@ -1,7 +1,5 @@
 (* Wrapper for the OpenMaple API *)
 
-external ploum : unit -> unit = "ploum"
-
 (* À moyen terme je voudrai sans doute avoir d'une part un wrapper « trivial »
  * pour OpenMaple (~ ce module), et d'autre part des utilitaires de plus haut
  * niveau reposant dessus. *)
