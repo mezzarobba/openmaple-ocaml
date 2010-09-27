@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <caml/mlvalues.h>
 #include <caml/memory.h>
@@ -223,10 +224,23 @@ MapleRaiseError2_stub(value msg, value arg1, value arg2) {
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
- * Conversions
+ * Conversions from and to ALGEB
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
-/* OCaml (unboxed) int <-> ALGEB */
+/* Template for trivial conversions */
+
+#define MAPLE_TO(CAML_NAME, TYPE, TO_CAML) \
+    CAMLprim value \
+    MapleTo ## TYPE ## _stub(value v) { \
+        CAMLparam1(v); \
+        ALGEB a = ALGEB_val(v); \
+        if (!IsMaple ## TYPE (kv, a)) \
+            caml_failwith( #CAML_NAME ); \
+        value res = TO_CAML(MapleTo ## TYPE (kv, a)); \
+        CAMLreturn (res); \
+    }
+
+/* (unboxed) int*/
 
 CAMLprim value
 ToMapleInteger_stub_unboxed(value n) {
@@ -259,7 +273,7 @@ MapleToM_INT_stub_unboxed(value v) {
     CAMLreturn (Val_long(data.res));
 }
 
-/* nativeint <-> ALGEB */
+/* nativeint */
 
 CAMLprim value
 ToMapleInteger_stub_native(value n) {
@@ -280,27 +294,40 @@ MapleToM_INT_stub_native(value v) {
     CAMLreturn (caml_copy_nativeint(data.res));
 }
 
-/* int32, int64 <-> ALGEB */
+/* int32, int64 */
 
-#define DEFINE_INTEGER_CONVERSIONS(SIZE, TO_MAPLE) \
+#define TO_MAPLE_INTEGER(SIZE, TO_MAPLE) \
     CAMLprim value \
     ToMapleInteger ## SIZE ## _stub(value n) { \
         CAMLparam1(n); \
         ALGEB a = TO_MAPLE(kv, (M_INT) Int ## SIZE ## _val(n)); \
         CAMLreturn (new_ALGEB_wrapper(a)); \
-    } \
-    \
-    CAMLprim value \
-    MapleToInteger ## SIZE ## _stub(value v) { \
-        CAMLparam1(v); \
-        ALGEB a = ALGEB_val(v); \
-        if (!IsMapleInteger ## SIZE (kv, a)) \
-            caml_failwith("int" #SIZE "_of_algeb"); \
-        CAMLreturn (caml_copy_int ## SIZE(MapleToInteger ## SIZE(kv, a))); \
-    } 
+    }
 
-DEFINE_INTEGER_CONVERSIONS(32, ToMapleInteger)
-DEFINE_INTEGER_CONVERSIONS(64, ToMapleInteger)
+MAPLE_TO(int32_of_algeb, Integer32, caml_copy_int32)
+TO_MAPLE_INTEGER(32, ToMapleInteger)
+MAPLE_TO(int64_of_algeb, Integer64, caml_copy_int64)
+TO_MAPLE_INTEGER(64, ToMapleInteger64)
+
+#undef TO_MAPLE_INTEGER
+
+/* string */
+
+CAMLprim value 
+ToMapleString_stub(value v) {
+    CAMLparam1(v);
+    if (caml_string_length(v) > strlen(String_val(v)))
+        /* null char in the middle of the string */
+        caml_failwith("algeb_of_string");
+    /* copies the string */
+    ALGEB res = ToMapleString(kv, String_val(v));
+    CAMLreturn (new_ALGEB_wrapper(res));
+}
+
+MAPLE_TO(string_of_algeb, String, caml_copy_string)
+
+#undef MAPLE_TO
+
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * Debug & test

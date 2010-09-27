@@ -47,3 +47,6 @@ external algeb_of_int32 : int32 -> algeb = "ToMapleInteger32_stub"
 external int32_of_algeb : algeb -> int32 = "MapleToInteger32_stub"
 external algeb_of_int64 : int64 -> algeb = "ToMapleInteger64_stub"
 external int64_of_algeb : algeb -> int64 = "MapleToInteger64_stub"
+
+external string_of_algeb : algeb -> string = "MapleToString_stub"
+external algeb_of_string : string -> algeb = "ToMapleString_stub"
