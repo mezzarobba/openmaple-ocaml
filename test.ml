@@ -1,6 +1,21 @@
-let _ =
-  OpenMaple.start_maple ();
-  OpenMaple.eval "1+;"
+let simple_frontend () =
+  let my_text_callback tag msg =
+    Printf.printf "Maple %s: %s\n" (OpenMaple.describe_text_output_tag tag) msg
+  and stop_long_computations () =
+    print_string "CHECK INTERRUPT\n";
+    true 
+  in
+  OpenMaple.start_maple
+    ~argv: [| "maple"; "-s" |]
+    ~query_interrupt: (Some stop_long_computations)
+    ~status_callback: (Some (Printf.printf "STATUS: %d %d %f\n"))
+    ~text_callback: (Some my_text_callback)
+    ~error_callback: None
+    ();
+  while true do
+    ignore (OpenMaple.eval (read_line()));
+  done 
+in simple_frontend ()
 
 let test_names () =
   OpenMaple.start_maple ();

@@ -4,6 +4,8 @@
  * pour OpenMaple (~ ce module), et d'autre part des utilitaires de plus haut
  * niveau reposant dessus. *)
 
+let package = "net.mezzarobba.openmaple-ocaml"
+
 type algeb
 
 exception MapleError of string
@@ -18,7 +20,86 @@ let _ =
 
 external dbg_print : algeb -> unit = "dbg_print"
 
-external start_maple : unit -> unit = "StartMaple_stub"
+type text_output_tag =  (* order matters! *)
+  | TextDiag
+  | TextMisc
+  | TextOutput
+  | TextQuit
+  | TextWarning
+  | TextError
+  | TextStatus
+  | TextPretty
+  | TextHelp
+  | TextDebug
+
+let describe_text_output_tag = function
+  | TextDiag    -> "diagnostic"
+  | TextMisc    -> "miscellaneous output"
+  | TextOutput  -> "text output"
+  | TextQuit    -> "exit message"
+  | TextWarning -> "warning"
+  | TextError   -> "error"
+  | TextStatus  -> "status"
+  | TextPretty  -> "pretty"
+  | TextHelp    -> "help text"
+  | TextDebug   -> "debug"
+
+type text_callback      = text_output_tag -> string -> unit
+type error_callback     = int -> string -> unit
+type status_callback    = int -> int -> float -> unit
+type read_line_callback = bool -> string
+type redirect_callback  = (string -> string -> bool) * (unit -> bool)
+type stream_callback    = string -> string array -> string option
+type query_interrupt    = unit -> bool
+type callback_callback  = string -> string option
+
+let default_error_callback offset msg =
+  if offset >= 0 then
+    raise (SyntaxError (offset, msg))
+  else
+    raise (MapleError msg)
+
+let default_read_line_callback dbg =
+  print_string (if dbg then "\nDBG ---> " else "\n---> ");
+  read_line ()
+
+external start_maple_doit : string array
+  -> (bool * bool * bool * bool * bool * bool * bool * bool)
+  -> unit = "StartMaple_stub"
+
+let start_maple
+      ?(argv = [| "maple" |]) (* With argv[0] set to "maple", Maple uses $MAPLE
+                               to search for libraries and stuff. *)
+      ?(text_callback      : text_callback option          = None)
+      ?(error_callback     : error_callback option
+                               = Some default_error_callback)
+      ?(status_callback    : status_callback option        = None)
+      ?(read_line_callback : read_line_callback option
+                               = Some default_read_line_callback)
+      ?(redirect_callback  : redirect_callback option      = None)
+      ?(stream_callback    : stream_callback option        = None)
+      ?(query_interrupt    : query_interrupt option        = None)
+      ?(callback_callback  : callback_callback option      = None)
+      () =
+  let register name = function
+    | None -> false
+    | Some closure ->
+        Callback.register (package ^ name) closure;
+        true
+  in
+  let callback_mask = 
+    begin
+      register ".textCallBack"     text_callback,
+      register ".errorCallBack"    error_callback,
+      register ".statusCallBack"   status_callback,
+      register ".readLineCallBack" read_line_callback,
+      register ".redirectCallBack" redirect_callback,
+      register ".streamCallBack"   stream_callback,
+      register ".queryInterrupt"   query_interrupt,
+      register ".callBackCallBack" callback_callback 
+    end
+  in start_maple_doit argv callback_mask
+
 external stop_maple : unit -> unit = "StopMaple_stub"
 external restart_maple : unit -> unit = "RestartMaple_stub"
 

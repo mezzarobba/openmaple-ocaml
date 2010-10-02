@@ -9,7 +9,20 @@
  *   passer à Caml l'ALGEB intermédiaire
  * - comparaison pour les objets ALGEB
  * - ...
+ *
+ * NOTES:
+ * - les fonctions non documentées (?) GetMapleID, MapleNew, MapleCreate,
+ *   createALGEB ont l'air intéressantes
+ * - voir aussi les xx.*
  */
+
+/* À chaque fois que l'on passe une chaîne de caractères de Maple à OCaml, on la
+ * copie. Ce n'est pas un drame, mais c'est un peu bête vu qu'on ne veut en
+ * général y accéder qu'en lecture, et ça pourrait devenir sensible en cas de
+ * grosses sorties ou d'utilisation intensive de textCallBack. Il serait en
+ * principe possible de se faire un type de chaînes immuables (et dont la
+ * longueur serait calculée différemment des chaînes Caml) qui puisse embarquer
+ * directement une chaîne sous le contrôle du GC de Maple... */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,24 +37,32 @@
 
 #include "maplec.h"
 
+#define CAML_NAME_SPACE
+
+#define PACKAGE "net.mezzarobba.openmaple-ocaml"
+
 /* Raising custom Caml exceptions */
 
-void
+/*
+static void
 raise_MapleError(char *msg) {
     caml_raise_with_string(
             *caml_named_value(
-                "net.mezzarobba.openmaple-ocaml.OpenMaple.MapleError"),
+                PACKAGE ".OpenMaple.MapleError"),
             msg);
 }
 
-void
+static void
 raise_SyntaxError(long offset, char *msg) {
     value args[] = { Val_long(offset), caml_copy_string(msg)};
     caml_raise_with_args(
             *caml_named_value(
-                "net.mezzarobba.openmaple-ocaml.OpenMaple.SyntaxError"),
+                PACKAGE ".OpenMaple.SyntaxError"),
             2, args);
 }
+*/
+
+/* TODO: raiseTypeError */
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * Running the Maple kernel
@@ -54,44 +75,155 @@ raise_SyntaxError(long offset, char *msg) {
 
 static MKernelVector kv;
 
-/* Callbacks */
+/* Redirect OpenMaple callbacks to Caml.
+ *
+ * We ignore the user_data parameters: they are not much use to us, since the
+ * callback functions we register from Caml are closures, not mere function
+ * pointers. */
 
-/* Il me faut en plus (ou à la place ?) de ce callback la possibilité
- * d'enregistrer des callbacks depuis Caml. Ce n'est pas dur, il suffit
- * de convenir d'un nom fixe pour chacun et d'utiliser
- * Callback.register. */
+static inline int
+maple_to_caml_text_output_tag(int maple_tag) {
+    switch (maple_tag) {
+        case MAPLE_TEXT_DIAG:    return 0;
+        case MAPLE_TEXT_MISC:    return 1;
+        case MAPLE_TEXT_OUTPUT:  return 2;
+        case MAPLE_TEXT_QUIT:    return 3;
+        case MAPLE_TEXT_WARNING: return 4;
+        case MAPLE_TEXT_ERROR:   return 5;
+        case MAPLE_TEXT_STATUS:  return 6;
+        case MAPLE_TEXT_PRETTY:  return 7;
+        case MAPLE_TEXT_HELP:    return 8;
+        case MAPLE_TEXT_DEBUG :  return 9;
+        default: caml_failwith("unknown text output tag");
+    }
+}
 
-void M_DECL
+static inline value
+maple_to_caml_bool(M_BOOL b) {
+    CAMLparam0 ();
+    if (b == TRUE)
+        CAMLreturn(Val_true);
+    else
+        CAMLreturn(Val_false);
+}
+
+#define GET_CLOSURE(CLOSURE, NAME) \
+    static value *CLOSURE = NULL; \
+    if (CLOSURE == NULL) \
+        CLOSURE = caml_named_value(PACKAGE #NAME );
+
+static void M_DECL
+textCallBack_caml(void *data, int tag, char *output) {
+    GET_CLOSURE(closure, .textCallBack);
+    int caml_tag = maple_to_caml_text_output_tag(tag);
+    caml_callback2(*closure, Val_int(caml_tag), caml_copy_string(output));
+}
+
+static void M_DECL
+errorCallBack_caml(void *data, M_INT offset, char *msg) {
+    GET_CLOSURE(closure, .errorCallBack);
+    caml_callback2(*closure, Val_long(offset), caml_copy_string(msg));
+}
+
+static void M_DECL
+statusCallBack_caml(void *data, long kilobytesUsed, long kilobytesAlloc, 
+        double cpuTime) {
+    GET_CLOSURE(closure, .statusCallBack);
+    caml_callback3(*closure, Val_long(kilobytesUsed), Val_long(kilobytesAlloc),
+            caml_copy_double(cpuTime));
+}
+
+static char * M_DECL
+readLineCallBack_caml(void *data, M_BOOL debug) {
+    CAMLparam0 ();
+    CAMLlocal1(ans);
+    GET_CLOSURE(closure, .readLineCallBack);
+    ans = caml_callback(*closure, maple_to_caml_bool(debug));
+    CAMLreturnT(char *, String_val(ans));
+}
+
+/* non testé */
+static M_BOOL M_DECL
+redirectCallBack_caml(void *data, char *name, char *mode) {
+    GET_CLOSURE(closures, .redirectCallBack);
+    if (name != NULL)
+        return Bool_val(caml_callback2(Field(*closures, 0),
+                    caml_copy_string(name), caml_copy_string(mode)));
+    else
+        return Bool_val(caml_callback(Field(*closures, 1), Val_int(0)));
+}
+
+static inline char *
+string_or_null(value option) {
+    CAMLparam1(option);
+    /* 'option' must be a Caml value of type string option */
+    if (Is_long(option)) /* constant constructor, i.e. None */
+        CAMLreturnT(char*, NULL);
+    else
+        CAMLreturnT(char*, String_val(Field(option, 0)));
+}
+
+/* non testé */
+static char * M_DECL
+streamCallBack_caml(void *data, char *name, int nargs, char **args) {
+    CAMLlocal1(args_value);
+    GET_CLOSURE(closure, .streamCallBack);
+    args_value = caml_alloc_tuple(nargs);
+    for (int i = 0; i < nargs; i++)
+        Store_field(args_value, i, caml_copy_string(args[i]));
+    return string_or_null(caml_callback2(*closure, caml_copy_string(name),
+                args_value));
+}
+
+/* XXX: On dirait que queryInterrupt() n'est jamais appelé, je ne comprends pas
+ * pourquoi. Idem avec le programme d'exemple fourni. */
+static M_BOOL M_DECL
+queryInterrupt_caml(void *data) {
+    GET_CLOSURE(closure, .queryInterrupt);
+    return maple_to_caml_bool(caml_callback(*closure, Int_val(0)));
+}
+
+/* non testé */
+static char * M_DECL
+callBackCallBack_caml(void *data, char *output) {
+    GET_CLOSURE(closure, .callBackCallBack);
+    return string_or_null(caml_callback(*closure, caml_copy_string(output)));
+} 
+
+#undef GET_CLOSURE
+
+/* void M_DECL
 errorCallBack_raise_caml_exception(void *data, M_INT offset, char *msg) {
     if (offset >= 0)
         raise_SyntaxError(offset, msg);
     else
         raise_MapleError(msg);
-}
+} */
 
 /* Start, stop, restart */
 
-void
-StartMaple_stub(void) {
-    CAMLparam0 ();
-    /* With argv[0] set to "maple", Maple uses $MAPLE to search for
-     * libraries and stuff. See
-     * http://www.mapleprimes.com/questions/42618-Seeking-C-Library-For-Symbolic-Manipulation
-     */
-    char *argv[] = { "maple" };
-    const int err_size = 2048;
-    char err[err_size];  // used to report errors during initialization
-    static MCallBackVectorDesc cb = {
-        0,   /* textCallBack */
-        &errorCallBack_raise_caml_exception,
-        0,   /* statusCallBack not used */
-        0,   /* readLineCallBack not used */
-        0,   /* redirectCallBack not used */
-        0,   /* streamCallBack not used */
-        0,   /* queryInterrupt not used */
-        0    /* callBackCallBack not used */
+CAMLprim void
+StartMaple_stub(value args, value cbmask) {
+    CAMLparam2 (args, cbmask);
+    int argc = Wosize_val(args);
+    char *argv[argc];
+    for (int i = 0; i < argc; i++)
+        argv[i] = String_val(Field(args, i));
+    /* Install those callbacks that are set in cbmask */
+    MCallBackVectorDesc cb = {
+        Bool_val(Field(cbmask,0)) ? &textCallBack_caml     : 0,
+        Bool_val(Field(cbmask,1)) ? &errorCallBack_caml    : 0,
+        Bool_val(Field(cbmask,2)) ? &statusCallBack_caml   : 0,
+        Bool_val(Field(cbmask,3)) ? &readLineCallBack_caml : 0,
+        Bool_val(Field(cbmask,4)) ? &redirectCallBack_caml : 0,
+        Bool_val(Field(cbmask,5)) ? &streamCallBack_caml   : 0,
+        Bool_val(Field(cbmask,6)) ? &queryInterrupt_caml   : 0,
+        Bool_val(Field(cbmask,7)) ? &callBackCallBack_caml : 0
     };
-    if( (kv = StartMaple(1, argv, &cb, NULL, NULL, err)) == NULL ) {
+    const int err_size = 2048;
+    char err[err_size];  /* used to report errors during initialization */
+    kv = StartMaple(argc, argv, &cb, NULL, NULL, err);
+    if (kv == NULL) {
         const int msg_size = err_size + 25;
         char msg[msg_size];
         snprintf(msg, msg_size, "Unable to start Maple: %s\n", err);
@@ -175,12 +307,11 @@ MaplePointer_to_ALGEB(ALGEB p) {
 
 static void
 finalize_ALGEB_wrapper(value v) {
-    printf("FINALIZE %lu\n", v);
     MapleGcAllow(kv, ALGEB_wrapper_val(v)->ptr);
 }
 
 static struct custom_operations ALGEB_wrapper_ops = {
-    "net.mezzarobba.openmaple-ocaml.ALGEB_wrapper-v0.1",
+    ".ALGEB_wrapper-v0.1",
     &finalize_ALGEB_wrapper,
     custom_compare_default,
     custom_hash_default,
