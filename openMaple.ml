@@ -103,7 +103,7 @@ let start_maple
 external stop_maple : unit -> unit = "StopMaple_stub"
 external restart_maple : unit -> unit = "RestartMaple_stub"
 
-external eval : string -> algeb = "EvalMapleStatement_stub"
+external eval_statement : string -> algeb = "EvalMapleStatement_stub"
 
 external maple_raise_error : string -> unit = "MapleRaiseError_stub"
 external maple_raise_error_1 : string -> algeb -> unit = "MapleRaiseError1_stub"
