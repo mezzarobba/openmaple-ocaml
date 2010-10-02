@@ -1,3 +1,13 @@
+let _ =
+  OpenMaple.start_maple ();
+  List.iter (fun b -> OpenMaple.dbg_print (OpenMaple.algeb_of_mbool b))
+    [ OpenMaple.True; OpenMaple.False; OpenMaple.Fail ];
+  List.iter (fun b -> OpenMaple.dbg_print (OpenMaple.algeb_of_bool b))
+    [ true; false ];
+  List.iter (fun s -> if OpenMaple.bool_of_algeb (OpenMaple.eval_statement s)
+             then print_string "TRUE\n" else print_string "FALSE\n")
+    [ "true:"; "false:"; "FAIL:" ]
+
 let simple_frontend () =
   let my_text_callback tag msg =
     Printf.printf "Maple %s: %s\n" (OpenMaple.describe_text_output_tag tag) msg
@@ -15,7 +25,6 @@ let simple_frontend () =
   while true do
     ignore (OpenMaple.eval_statement (read_line()));
   done 
-in simple_frontend ()
 
 let test_names () =
   OpenMaple.start_maple ();

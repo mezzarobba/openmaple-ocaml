@@ -10,13 +10,18 @@ type algeb
 
 exception MapleError of string
 exception SyntaxError of int * string
+exception BooleanFail
+
 let _ = 
   Callback.register_exception
-    "net.mezzarobba.openmaple-ocaml.OpenMaple.MapleError"
+    (package ^ ".OpenMaple.MapleError")
     (MapleError "");
   Callback.register_exception
-    "net.mezzarobba.openmaple-ocaml.OpenMaple.SyntaxError"
+    (package ^ ".OpenMaple.SyntaxError")
     (SyntaxError (0, ""));
+  Callback.register_exception
+    (package ^ ".OpenMaple.BooleanFail")
+    BooleanFail
 
 external dbg_print : algeb -> unit = "dbg_print"
 
@@ -129,6 +134,18 @@ let assign ?indices lhs rhs =
           maple_assign_indexed lhs a rhs
 
 (* créer plutôt un sous-module ALGEB avec of_int, to_int, etc. ? *)
+
+type mbool = Fail | False | True  (* order matters! *)
+external mbool_of_algeb : algeb -> mbool = "MapleToM_BOOL_stub"
+external algeb_of_mbool : mbool -> algeb = "ToMapleBoolean_stub"
+exception BooleanFail
+let bool_of_mbool = function
+  | True -> true
+  | False -> false
+  | Fail -> raise BooleanFail
+let mbool_of_bool = function true -> True | false -> False
+let algeb_of_bool b = algeb_of_mbool (mbool_of_bool b)
+let bool_of_algeb b = bool_of_mbool (mbool_of_algeb b)
 
 external algeb_of_int : int -> algeb = "ToMapleInteger_stub_unboxed"
 external int_of_algeb : algeb -> int = "MapleToM_INT_stub_unboxed"

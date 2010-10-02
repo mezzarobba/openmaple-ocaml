@@ -62,6 +62,11 @@ raise_SyntaxError(long offset, char *msg) {
 }
 */
 
+static inline void
+raise_BooleanFail() {
+    caml_raise(*caml_named_value(PACKAGE ".OpenMaple.BooleanFail"));
+}
+
 /* TODO: raiseTypeError */
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
@@ -103,8 +108,11 @@ maple_to_caml_bool(M_BOOL b) {
     CAMLparam0 ();
     if (b == TRUE)
         CAMLreturn(Val_true);
-    else
+    else if (b == FALSE)
         CAMLreturn(Val_false);
+    else
+        raise_BooleanFail();
+    CAMLreturn(Val_false); /* prevent warning */
 }
 
 #define GET_CLOSURE(CLOSURE, NAME) \
@@ -417,6 +425,22 @@ MapleRaiseError2_stub(value msg, value arg1, value arg2) {
         value res = TO_CAML(MapleTo ## TYPE (kv, a)); \
         CAMLreturn (res); \
     }
+
+/* bool and mbool */
+
+CAMLprim value
+ToMapleBoolean_stub(value b) {
+    CAMLparam1(b);
+    ALGEB a = ToMapleBoolean(kv, (M_BOOL) (Int_val(b) - 1));
+    CAMLreturn (new_ALGEB_wrapper(a));
+}
+
+CAMLprim value
+MapleToM_BOOL_stub(value v) {
+    CAMLparam1(v);
+    printf("%d\n", MapleToM_BOOL(kv, ALGEB_val(v)) + 1);
+    CAMLreturn (Val_int(MapleToM_BOOL(kv, ALGEB_val(v)) + 1));
+}
 
 /* (unboxed) int*/
 
