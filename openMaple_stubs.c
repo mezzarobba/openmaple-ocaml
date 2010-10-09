@@ -10,11 +10,14 @@
  *   avec un nombre d'arguments fixé) à base de EvalProcedure
  * - eval_int, eval_bool, assign_int, assign_bool, etc. qui évitent de
  *   passer à Caml l'ALGEB intermédiaire
+ * - ALGEB_sprintf ou assimilé
+ * - arithmétique de base ?
+ * - big_int ?
  * - ...
  *
  * NOTES:
  * - les fonctions non documentées (?) GetMapleID, MapleNew, MapleCreate,
- *   createALGEB ont l'air intéressantes
+ *   createALGEB, MapleGetElems (=op ?) ont l'air intéressantes
  * - voir aussi les xx.*
  */
 
@@ -320,6 +323,10 @@ finalize_ALGEB_wrapper(value v) {
     MapleGcAllow(kv, ALGEB_wrapper_val(v)->ptr);
 }
 
+/*static void
+compare_ALGEB_wrapper(value v1, value v2) {
+*/
+
 static struct custom_operations ALGEB_wrapper_ops = {
     ".ALGEB_wrapper-v0.1",
     &finalize_ALGEB_wrapper,
@@ -581,15 +588,23 @@ ToMapleName_stub(value name, value global) {
  * Debug & test
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+static char* maple_dag_type[] = {
+    "null", "INTNEG", "INTPOS", "RATIONAL", "FLOAT", "HFLOAT", "COMPLEX",
+    "STRING", "NAME", "MEMBER", "TABLEREF", "DCOLON", "CATENATE", "POWER",
+    "PROD", "SERIES", "SUM", "ZPPOLY", "SDPOLY", "FUNCTION", "UNEVAL",
+    "EQUATION", "INEQUAT", "LESSEQ", "LESSTHAN", "AND", "NOT", "OR", "XOR",
+    "IMPLIES", "EXPSEQ", "LIST", "LOCAL", "PARAM", "LEXICAL", "PROC", "RANGE",
+    "SET", "TABLE", "RTABLE", "MODDEF", "MODULE", "ASSIGN", "FOR", "IF", "READ",
+    "SAVE", "STATSEQ", "STOP", "ERROR", "TRY", "RETURN", "BREAK", "NEXT", "USE"
+};
+
 CAMLprim void 
 dbg_print (value v) {
     CAMLparam1(v);
     ALGEB a = ALGEB_val(v);
-    printf("wrapper=%lu id=%lu\nvalue=", v, GetMapleID(kv, a));
-    if (IsMapleNULL(kv, a))
-        printf("NULL\n");
-    else
-        MapleALGEB_Printf(kv, "%a\n", a);
+    printf("wrapper=%lu ALGEB=%lu\n", v, a);
+    printf("id=%s value=", maple_dag_type[GetMapleID(kv, a)]);
+    MapleALGEB_Printf(kv, "%a\n", a);
     CAMLreturn0;
 }
 
