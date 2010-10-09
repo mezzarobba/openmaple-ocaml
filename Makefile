@@ -20,17 +20,22 @@ openMaple.cma openMaple.cmo openMaple.cmxa: openMaple_stubs.o openMaple.ml
 			-cclib -lrt \
 			$^
 
+# for rlwrap
+openMaple.completions: openMaple.ml
+	ocamlc -i $^ | awk '/^[^ ]/ { print "OpenMaple." $$2 }' | sort > $@
+
 test: openMaple.cmxa test.ml
 	ocamlopt -o $@ -ccopt -L. $^
 
 clean:
-	rm -f *.cm* *.[oa] dllopenMaple.so test top
+	rm -f *.cm* *.[oa] dllopenMaple.so test top openMaple.completions
 
-top: openMaple.cma
-	 ocamlmktop -custom -o $@ -ccopt -L. $^
+top: openMaple.cma openMaple.completions
+	 ocamlmktop -custom -o $@ -ccopt -L. $<
 
 run: test
 	MAPLE=${MAPLE} ./test
 
 runtop: top
-	MAPLE=${MAPLE} ./top
+	MAPLE=${MAPLE} rlwrap -b '(){}[],+−=&^%$#@"";|\' \
+	      -f openMaple.completions ./top
