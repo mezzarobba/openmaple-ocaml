@@ -108,7 +108,17 @@ let start_maple
 external stop_maple : unit -> unit = "StopMaple_stub"
 external restart_maple : unit -> unit = "RestartMaple_stub"
 
+(* Evaluation *)
+
+external eval : algeb -> algeb = "MapleEval_stub"
+external unique : algeb -> algeb = "MapleUnique_stub"
+(*external name_value : algeb -> algeb = "MapleNameValue_stub"*)
+
 external eval_statement : string -> algeb = "EvalMapleStatement_stub"
+
+external eval_procedure : algeb -> algeb -> algeb = "EvalMapleProcedure_stub"
+
+(* Raising Maple errors *)
 
 external maple_raise_error : string -> unit = "MapleRaiseError_stub"
 external maple_raise_error_1 : string -> algeb -> unit = "MapleRaiseError1_stub"
@@ -121,6 +131,8 @@ let raise_error ?arg1 ?arg2 msg =
     | Some a, None   -> maple_raise_error_1 msg a
     | Some a, Some b -> maple_raise_error_2 msg a b
     | None, Some _   -> raise (Invalid_argument "OpenMaple.raise_error")
+
+(* Assignment *)
 
 external maple_assign : algeb -> algeb -> unit = "MapleAssign_stub"
 external maple_assign_indexed : algeb -> int array -> algeb -> unit 
@@ -135,6 +147,8 @@ let assign ?indices lhs rhs =
 
 (* créer plutôt un sous-module ALGEB avec of_int, to_int, etc. ? *)
 
+(* Booleans *)
+
 type mbool = Fail | False | True  (* order matters! *)
 external mbool_of_algeb : algeb -> mbool = "MapleToM_BOOL_stub"
 external algeb_of_mbool : mbool -> algeb = "ToMapleBoolean_stub"
@@ -147,6 +161,8 @@ let mbool_of_bool = function true -> True | false -> False
 let algeb_of_bool b = algeb_of_mbool (mbool_of_bool b)
 let bool_of_algeb b = bool_of_mbool (mbool_of_algeb b)
 
+(* Integers *)
+
 external algeb_of_int : int -> algeb = "ToMapleInteger_stub_unboxed"
 external int_of_algeb : algeb -> int = "MapleToM_INT_stub_unboxed"
 external algeb_of_nativeint : nativeint -> algeb = "ToMapleInteger_stub_native"
@@ -156,10 +172,14 @@ external int32_of_algeb : algeb -> int32 = "MapleToInteger32_stub"
 external algeb_of_int64 : int64 -> algeb = "ToMapleInteger64_stub"
 external int64_of_algeb : algeb -> int64 = "MapleToInteger64_stub"
 
+(* Strings *)
+
 external string_of_algeb : algeb -> string = "MapleToString_stub"
 external algeb_of_string : string -> algeb = "ToMapleString_stub"
 
-external string_to_name : string -> bool -> algeb = "ToMapleName_stub"
+(* Names *)
 
-let global_name name = string_to_name name true
-let new_local_name name = string_to_name name false
+external to_maple_name : string -> bool -> algeb = "ToMapleName_stub"
+
+let global_name name = to_maple_name name true
+let new_local_name name = to_maple_name name false

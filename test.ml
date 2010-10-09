@@ -1,5 +1,13 @@
 let _ =
   OpenMaple.start_maple ();
+  let ifactor = 
+    let f = OpenMaple.eval_procedure (OpenMaple.global_name "ifactor") in
+      function n -> f (OpenMaple.algeb_of_int n) in
+    OpenMaple.dbg_print (ifactor 42);
+    OpenMaple.dbg_print (ifactor 17)
+
+let test_boolean () =
+  OpenMaple.start_maple ();
   List.iter (fun b -> OpenMaple.dbg_print (OpenMaple.algeb_of_mbool b))
     [ OpenMaple.True; OpenMaple.False; OpenMaple.Fail ];
   List.iter (fun b -> OpenMaple.dbg_print (OpenMaple.algeb_of_bool b))

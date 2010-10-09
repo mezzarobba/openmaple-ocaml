@@ -2,12 +2,14 @@
  * Written by Marc Mezzarobba <marc@mezzarobba.net>, 2010 */
 
 /* TODO:
- * - rediriger la sortie texte
- * - callbacks personnalisés
  * - encore plein de fonctions utiles à encapsuler
+ * - conversion de tableau/liste Caml en expseq/liste Maple
+ * - comparaison pour les objets ALGEB
+ * - facilités pour créer côté Caml des clôtures qui encapsulent des procédures
+ *   Maple « directement appelables » (soit avec une liste d'arguments, soit
+ *   avec un nombre d'arguments fixé) à base de EvalProcedure
  * - eval_int, eval_bool, assign_int, assign_bool, etc. qui évitent de
  *   passer à Caml l'ALGEB intermédiaire
- * - comparaison pour les objets ALGEB
  * - ...
  *
  * NOTES:
@@ -358,6 +360,41 @@ new_ALGEB_wrapper(ALGEB a) {
  * Eval, Assign and friends
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
 
+#define MAPLE_EVAL_LIKE(NAME) \
+    CAMLprim value \
+    Maple ## NAME ## _stub(value v) { \
+        CAMLparam1(v); \
+        ALGEB a = ALGEB_val(v); \
+        ALGEB b = Maple ## NAME(kv, a); \
+        if (a == b) \
+            CAMLreturn (v); \
+        else \
+            CAMLreturn (new_ALGEB_wrapper(b)); \
+    }
+
+MAPLE_EVAL_LIKE(Eval)
+MAPLE_EVAL_LIKE(Unique)
+
+/* Semble utile pour récupérer la valeur associée à un nom, mais ne renvoie pas
+ * toujours un ALGEB valide, même quand assigned(v)==TRUE. (Je présume que c'est
+ * une histoire de valeurs pas encore chargées depuis une bibliothèqe, ou un
+ * truc comme ça. Et je ne sais pas tester... */
+/* MAPLE_EVAL_LIKE(NameValue) */
+
+#undef MAPLE_EVAL_LIKE
+
+/* Autoriser args à être une liste Caml, et faire la conversion
+    * automatiquement ? Ou alors, donner au niveau caml une fonction
+    * eval_procedure qui prend une expseq et une fonction eval_proc qui prend
+    * une liste Caml ? */
+CAMLprim value
+EvalMapleProcedure_stub(value proc, value args) {
+    CAMLparam2(proc, args);
+    /* EvalMapleProcedure is documented in the VB API. */
+    ALGEB res = EvalMapleProcedure(kv, ALGEB_val(proc), ALGEB_val(args));
+    CAMLreturn (new_ALGEB_wrapper(res));
+}
+
 CAMLprim value
 EvalMapleStatement_stub(value statement) {
     CAMLparam1(statement);
@@ -438,7 +475,6 @@ ToMapleBoolean_stub(value b) {
 CAMLprim value
 MapleToM_BOOL_stub(value v) {
     CAMLparam1(v);
-    printf("%d\n", MapleToM_BOOL(kv, ALGEB_val(v)) + 1);
     CAMLreturn (Val_int(MapleToM_BOOL(kv, ALGEB_val(v)) + 1));
 }
 
@@ -548,8 +584,12 @@ ToMapleName_stub(value name, value global) {
 CAMLprim void 
 dbg_print (value v) {
     CAMLparam1(v);
-    printf("wrapper=%lu, value=", v);
-    MapleALGEB_Printf(kv, "%a\n", ALGEB_wrapper_val(v)->val);
+    ALGEB a = ALGEB_val(v);
+    printf("wrapper=%lu id=%lu\nvalue=", v, GetMapleID(kv, a));
+    if (IsMapleNULL(kv, a))
+        printf("NULL\n");
+    else
+        MapleALGEB_Printf(kv, "%a\n", a);
     CAMLreturn0;
 }
 
