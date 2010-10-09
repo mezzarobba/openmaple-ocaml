@@ -6,7 +6,7 @@ MAPLE_ARCH=X86_64_LINUX
 lib: openMaple.cma openMaple.cmxa
 
 openMaple_stubs.o: openMaple_stubs.c
-	gcc -c -std=c99 -fPIC \
+	gcc -g -c -std=c99 -fPIC \
 	    -Wl,-rpath=${MAPLE}/bin.${MAPLE_ARCH} \
 	    -L${MAPLE}/bin.${MAPLE_ARCH} \
 	    -I${MAPLE}/extern/include \
@@ -25,7 +25,7 @@ openMaple.completions: openMaple.ml
 	ocamlc -i $^ | awk '/^[^ ]/ { print "OpenMaple." $$2 }' | sort > $@
 
 test: openMaple.cmxa test.ml
-	ocamlopt -o $@ -ccopt -L. $^
+	ocamlopt -g -o $@ -ccopt -L. $^
 
 clean:
 	rm -f *.cm* *.[oa] dllopenMaple.so test top openMaple.completions
