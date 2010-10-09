@@ -1,21 +1,36 @@
-MAPLE_ROOT=${HOME}/opt/maple/13
-MAPLE_BIN=${MAPLE_ROOT}/bin.X86_64_LINUX
+MAPLE=${HOME}/opt/maple/13
+MAPLE_ARCH=X86_64_LINUX
 
-.PHONY: clean run
+.PHONY: clean lib run top
 
-# Ce Makefile est tout pourri, mais j'ai oublié le peu que j'avais
-# compris concernant ocamlbuild et tout ça.
+lib: openMaple.cma openMaple.cmxa
 
-test: openMaple_stubs.c openMaple.ml test.ml
-	rm -f openMaple_stubs.o  test.o openMaple.cmi openMaple.cmx test.cmi \
-	    test.cmx test
-	LD_LIBRARY_PATH=${MAPLE_BIN} ocamlopt -g -o $@ \
-			-ccopt -std=c99 \
-			-ccopt -L${MAPLE_BIN} \
-			-ccopt -I${MAPLE_ROOT}/extern/include \
+openMaple_stubs.o: openMaple_stubs.c
+	gcc -c -std=c99 -fPIC \
+	    -Wl,-rpath=${MAPLE}/bin.${MAPLE_ARCH} \
+	    -L${MAPLE}/bin.${MAPLE_ARCH} \
+	    -I${MAPLE}/extern/include \
+	    $^
+
+openMaple.cma openMaple.cmo openMaple.cmxa: openMaple_stubs.o openMaple.ml
+	ocamlmklib -o openMaple \
+			-ccopt -L${MAPLE}/bin.${MAPLE_ARCH} \
+			-ccopt -Wl,-rpath=${MAPLE}/bin.${MAPLE_ARCH} \
 			-cclib -lmaplec \
 			-cclib -lrt \
 			$^
 
+test: openMaple.cmxa test.ml
+	ocamlopt -o $@ -ccopt -L. $^
+
+clean:
+	rm -f *.cm* *.[oa] dllopenMaple.so test top
+
+top: openMaple.cma
+	 ocamlmktop -custom -o $@ -ccopt -L. $^
+
 run: test
-	MAPLE=${MAPLE_ROOT} LD_LIBRARY_PATH=${MAPLE_BIN} ./test
+	MAPLE=${MAPLE} ./test
+
+runtop: top
+	MAPLE=${MAPLE} ./top
