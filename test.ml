@@ -1,4 +1,4 @@
-let _ =
+let test_compare_hash () =
   OpenMaple.start_maple ();
   let mylist = List.map OpenMaple.algeb_of_int [5; 4; 3; -1; 0; 10; 2] in
   let h = Hashtbl.create 5 in
@@ -47,8 +47,8 @@ let simple_frontend () =
 let test_names () =
   OpenMaple.start_maple ();
   let g = OpenMaple.global_name "a" in
-  let l1 = OpenMaple.new_local_name "a" in
-  let l2 = OpenMaple.new_local_name "a" in
+  let l1 = OpenMaple.fresh_local_name "a" in
+  let l2 = OpenMaple.fresh_local_name "a" in
     OpenMaple.assign g (OpenMaple.algeb_of_int 0);
     OpenMaple.assign l1 (OpenMaple.algeb_of_int 1);
     ignore (OpenMaple.eval_statement "a;");

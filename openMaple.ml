@@ -1,4 +1,5 @@
-(* Wrapper for the OpenMaple API *)
+(* Objective Caml bindings for OpenMaple
+ * Marc Mezzarobba <marc@mezzarobba.net>, 2010 *)
 
 (* À moyen terme je voudrai sans doute avoir d'une part un wrapper « trivial »
  * pour OpenMaple (~ ce module), et d'autre part des utilitaires de plus haut
@@ -25,6 +26,8 @@ let _ =
 
 external dbg_print : algeb -> unit = "dbg_print"
 
+(* Maple callbacks *)
+
 type text_output_tag =  (* order matters! *)
   | TextDiag
   | TextMisc
@@ -45,7 +48,7 @@ let describe_text_output_tag = function
   | TextWarning -> "warning"
   | TextError   -> "error"
   | TextStatus  -> "status"
-  | TextPretty  -> "pretty"
+  | TextPretty  -> "pretty-printed text" (* when interface(pretty) >= 1 *)
   | TextHelp    -> "help text"
   | TextDebug   -> "debug"
 
@@ -67,6 +70,8 @@ let default_error_callback offset msg =
 let default_read_line_callback dbg =
   print_string (if dbg then "\nDBG ---> " else "\n---> ");
   read_line ()
+
+(* Start/stop/restart *)
 
 external start_maple_doit : string array
   -> (bool * bool * bool * bool * bool * bool * bool * bool)
@@ -182,4 +187,4 @@ external algeb_of_string : string -> algeb = "ToMapleString_stub"
 external to_maple_name : string -> bool -> algeb = "ToMapleName_stub"
 
 let global_name name = to_maple_name name true
-let new_local_name name = to_maple_name name false
+let fresh_local_name name = to_maple_name name false

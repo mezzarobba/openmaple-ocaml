@@ -4,7 +4,6 @@
 /* TODO:
  * - encore plein de fonctions utiles à encapsuler
  * - conversion de tableau/liste Caml en expseq/liste Maple
- * - comparaison pour les objets ALGEB
  * - facilités pour créer côté Caml des clôtures qui encapsulent des procédures
  *   Maple « directement appelables » (soit avec une liste d'arguments, soit
  *   avec un nombre d'arguments fixé) à base de EvalProcedure
@@ -13,6 +12,7 @@
  * - ALGEB_sprintf ou assimilé
  * - arithmétique de base ?
  * - big_int ?
+ * - améliorer l'interaction des deux GC
  * - ...
  *
  * NOTES:
@@ -46,7 +46,9 @@
 
 #define PACKAGE "net.mezzarobba.openmaple-ocaml"
 
-/* Raising custom Caml exceptions */
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * Caml exceptions
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 /*
 static void
@@ -592,7 +594,6 @@ ToMapleName_stub(value name, value global) {
 }
 
 #undef MAPLE_TO
-
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * Debug & test
