@@ -200,6 +200,11 @@ external to_maple_name : string -> bool -> algeb = "ToMapleName_stub"
 let global_name name = to_maple_name name true
 let fresh_local_name name = to_maple_name name false
 
+(* Lists and expression sequences *)
+
+external list_select : algeb -> int -> algeb = "MapleListSelect_stub"
+external expseq_select : algeb -> int -> algeb = "MapleExpseqSelect_stub"
+
 (* SPrintf *)
 
 external maple_algeb_sprintf_0 : string -> string = "MapleALGEB_SPrintf0_stub"

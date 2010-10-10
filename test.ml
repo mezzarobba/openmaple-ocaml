@@ -1,3 +1,14 @@
+let _ =
+  OpenMaple.start_maple ();
+  let mylist = OpenMaple.eval_statement ("[1, 2, 3]:")
+  and myexpseq = OpenMaple.eval_statement ("a, b, c:")
+  in Printf.printf "%s %s\n"
+       (OpenMaple.sprint (OpenMaple.list_select mylist 1))
+       (OpenMaple.sprint (OpenMaple.expseq_select myexpseq 2));
+  try
+    ignore (OpenMaple.sprint (OpenMaple.expseq_select myexpseq 4))
+  with OpenMaple.MapleError _ -> ()
+
 let test_sprint () =
   OpenMaple.start_maple ();
   let a = OpenMaple.eval_statement "x^2+1:"

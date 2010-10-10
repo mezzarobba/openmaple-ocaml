@@ -601,6 +601,26 @@ ToMapleName_stub(value name, value global) {
 #undef MAPLE_TO
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
+ * Lists and expression sequences
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+#define LIST_LIKE_SELECT(LIST_LIKE, IS_LL) \
+    CAMLprim value \
+    Maple ## LIST_LIKE ## Select_stub(value seq, value idx) { \
+        CAMLparam2(seq, idx); \
+        ALGEB aseq = ALGEB_val(seq); \
+        if (!IsMaple ## IS_LL (kv, aseq)) \
+            raise_TypeError(#LIST_LIKE); \
+        ALGEB item = Maple ## LIST_LIKE ## Select(kv, aseq, Long_val(idx)); \
+        CAMLreturn (new_ALGEB_wrapper(item)); \
+    }
+
+LIST_LIKE_SELECT(List, List)
+LIST_LIKE_SELECT(Expseq, ExpressionSequence)
+
+#undef LIST_LIKE_SELECT
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Output to strings
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
