@@ -1,8 +1,17 @@
 let _ =
   OpenMaple.start_maple ();
+  let series = OpenMaple.eval_proc_3 (OpenMaple.global_name "series")
+  and sin = OpenMaple.eval_proc_1 (OpenMaple.global_name "sin")
+  and x = OpenMaple.global_name "x" in
+    print_string (OpenMaple.sprint 
+                    (series (sin x) x (OpenMaple.algeb_of_int 3)));
+    print_newline ()
+
+let test_lists_expseqs () =
+  OpenMaple.start_maple ();
   print_string
     (OpenMaple.sprint
-       (OpenMaple.list_of_arra
+       (OpenMaple.list_of_array
           (Array.map OpenMaple.global_name [| "x"; "y"; "z"; "t" |])));
   print_newline ();
   print_string

@@ -133,6 +133,11 @@ external unique : algeb -> algeb = "MapleUnique_stub"
 external eval_statement : string -> algeb = "EvalMapleStatement_stub"
 
 external eval_procedure : algeb -> algeb -> algeb = "EvalMapleProcedure_stub"
+external eval_proc : algeb -> algeb array -> algeb = "EvalMapleProc_like_stub"
+let eval_proc_1 = eval_procedure
+let eval_proc_2 proc a b = eval_proc proc [| a; b |]
+let eval_proc_3 proc a b c = eval_proc proc [| a; b; c |]
+let eval_proc_4 proc a b c d = eval_proc proc [| a; b; c; d |]
 
 (* Raising Maple errors *)
 

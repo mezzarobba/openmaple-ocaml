@@ -3,16 +3,11 @@
 
 /* TODO:
  * - encore plein de fonctions utiles à encapsuler
- * - conversion de tableau/liste Caml en expseq/liste Maple
- * - facilités pour créer côté Caml des clôtures qui encapsulent des procédures
- *   Maple « directement appelables » (soit avec une liste d'arguments, soit
- *   avec un nombre d'arguments fixé) à base de EvalProcedure
  * - eval_int, eval_bool, assign_int, assign_bool, etc. qui évitent de
  *   passer à Caml l'ALGEB intermédiaire
- * - ALGEB_sprintf ou assimilé
+ * - améliorer l'interaction des deux GC
  * - arithmétique de base ?
  * - big_int ?
- * - améliorer l'interaction des deux GC
  * - ...
  *
  * NOTES:
@@ -407,15 +402,22 @@ MAPLE_EVAL_LIKE(Unique)
 
 #undef MAPLE_EVAL_LIKE
 
-/* Autoriser args à être une liste Caml, et faire la conversion
-    * automatiquement ? Ou alors, donner au niveau caml une fonction
-    * eval_procedure qui prend une expseq et une fonction eval_proc qui prend
-    * une liste Caml ? */
 CAMLprim value
 EvalMapleProcedure_stub(value proc, value args) {
     CAMLparam2(proc, args);
     /* EvalMapleProcedure is documented in the VB API. */
     ALGEB res = EvalMapleProcedure(kv, ALGEB_val(proc), ALGEB_val(args));
+    CAMLreturn (new_ALGEB_wrapper(res));
+}
+
+CAMLprim value
+EvalMapleProc_like_stub(value proc, value arg_array) {
+    CAMLparam2(proc, arg_array);
+    int nargs = Wosize_val(arg_array);
+    ALGEB arg_seq = NewMapleExpressionSequence(kv, nargs);
+    for (int i = 0; i < nargs; i++)
+        MapleExpseqAssign(kv, arg_seq, i+1, ALGEB_val(Field(arg_array, i)));
+    ALGEB res = EvalMapleProcedure(kv, ALGEB_val(proc), arg_seq);
     CAMLreturn (new_ALGEB_wrapper(res));
 }
 
