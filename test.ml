@@ -1,5 +1,15 @@
 let _ =
   OpenMaple.start_maple ();
+  let mylist = List.map OpenMaple.algeb_of_int [5; 4; 3; -1; 0; 10; 2] in
+  let h = Hashtbl.create 5 in
+    List.iter (fun x -> Hashtbl.add h x (OpenMaple.int_of_algeb x)) mylist;
+    List.iter (fun a -> print_int (Hashtbl.find h a); print_string " ")
+      (List.sort compare mylist);
+    print_newline ()
+
+
+let test_eval_proc () =
+  OpenMaple.start_maple ();
   let ifactor = 
     let f = OpenMaple.eval_procedure (OpenMaple.global_name "ifactor") in
       function n -> f (OpenMaple.algeb_of_int n) in

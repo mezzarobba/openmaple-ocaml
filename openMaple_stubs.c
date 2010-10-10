@@ -267,30 +267,28 @@ RestartMaple_stub(void) {
  * ALGEBs and ALGEBwrappers
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/* ALGEB is the C data type of pointers to abstract Maple objects.  The
- * objects returned as ALGEB values by OpenMaple API functions may still
- * get garbage-collected as soon as the control goes back to the Maple
- * server, unless they are protected using MapleGcProtect().  (This is
- * not completely explicit in the manual, but clear from experiments:
- * juste create a large Maple expression, call gc(), and try to access
- * it again.)
+/* ALGEB is the C data type of pointers to abstract Maple objects.  They (seem
+ * to) correspond to the addresses used by addressof and friends.  The objects
+ * returned as ALGEB values by OpenMaple API functions may still get
+ * garbage-collected as soon as the control goes back to the Maple server,
+ * unless they are protected using MapleGcProtect().  (This is not completely
+ * explicit in the manual, but clear from experiments: juste create a large
+ * Maple expression, call gc(), and try to access it again.)
  *
- * (AFAICT there is no way to test whether an [unprotected] ALGEB is
- * still valid without risking crashing the Maple server.  So no "weak
- * Maple pointers".)
+ * (AFAICT there is no way to test whether an [unprotected] ALGEB is still valid
+ * without risking crashing the Maple server.  So no "weak Maple pointers".)
  *
- * To hand ALGEBs to OCaml, we encapsulate them in OCaml custom blocks.
- * Since the ALGEBs we receive from Maple may already be protected (this
- * happens, e.g., when they represent small integers), we also include
- * in each custom block a MaplePointer that we protect and use to mark
- * our ALGEB using MaplePointerSetMarkFunction().
+ * To hand ALGEBs to OCaml, we encapsulate them in OCaml custom blocks. Since
+ * the ALGEBs we receive from Maple may already be protected (this happens,
+ * e.g., when they represent small integers), we also include in each custom
+ * block a MaplePointer that we protect and use to mark our ALGEB using
+ * MaplePointerSetMarkFunction().
  *
- * (Restricting the use of MaplePointers to ALGEBs that are already
- * protected when we get them would likely be more efficient, but the
- * Maple manual recommends using MaplePointers when possible.  This is
- * an easy change anyway.  Yet another (better?) strategy would be to
- * use a single MaplePointer and keep track ourselves of the
- * aliveness(?) of the wrappers.) */
+ * (Restricting the use of MaplePointers to ALGEBs that are already protected
+ * when we get them would likely be more efficient, but the Maple manual
+ * recommends using MaplePointers when possible.  This is an easy change anyway.
+ * Yet another (better?) strategy would be to use a single MaplePointer and keep
+ * track ourselves of the aliveness(?) of the wrappers.) */
 
 /* The data part of our custom blocks */
 typedef struct ALGEB_wrapper {
@@ -323,15 +321,27 @@ finalize_ALGEB_wrapper(value v) {
     MapleGcAllow(kv, ALGEB_wrapper_val(v)->ptr);
 }
 
-/*static void
+/* Sort by address, à la Maple. */
+static int
 compare_ALGEB_wrapper(value v1, value v2) {
-*/
+    return (int) (((long) ALGEB_val(v1)) - ((long) ALGEB_val(v2)));
+}
+
+static long
+hash_ALGEB_wrapper(value v) {
+    return (long) ALGEB_val(v);
+}
+
+/* On pourrait imaginer si nécessaire de supporter serialize/deserialize en
+ * appelant save() ou XMLTools:-Serialize(), mais ça ne permet AFAII que de
+ * sauvegarder des valeurs, pas l'état entier de la session distante. J'ai
+ * l'impression qu'il vaut mieux laisser ça à l'application. */
 
 static struct custom_operations ALGEB_wrapper_ops = {
     ".ALGEB_wrapper-v0.1",
     &finalize_ALGEB_wrapper,
-    custom_compare_default,
-    custom_hash_default,
+    &compare_ALGEB_wrapper,
+    &hash_ALGEB_wrapper,
     custom_serialize_default,
     custom_deserialize_default
 };
