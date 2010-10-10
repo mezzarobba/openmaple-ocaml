@@ -188,3 +188,27 @@ external to_maple_name : string -> bool -> algeb = "ToMapleName_stub"
 
 let global_name name = to_maple_name name true
 let fresh_local_name name = to_maple_name name false
+
+(* SPrintf *)
+
+external maple_algeb_sprintf_0 : string -> string = "MapleALGEB_SPrintf0_stub"
+external maple_algeb_sprintf_1 : string -> algeb -> string
+                                                    = "MapleALGEB_SPrintf1_stub"
+external maple_algeb_sprintf_2 : string -> algeb -> algeb -> string
+                                                    = "MapleALGEB_SPrintf2_stub"
+external maple_algeb_sprintf_3 : string -> algeb -> algeb -> algeb -> string
+                                                    = "MapleALGEB_SPrintf3_stub"
+external maple_algeb_sprintf_4 : string -> algeb -> algeb -> algeb -> algeb
+                                          -> string = "MapleALGEB_SPrintf3_stub"
+
+let algeb_sprintf fmt = function
+  (* I see little point in forcing nargs <= 4 through typing since we have no
+   * way to check that the args match the references in the format string. *)
+  | []                       -> maple_algeb_sprintf_0 fmt
+  | [arg1]                   -> maple_algeb_sprintf_1 fmt arg1
+  | [arg1; arg2]             -> maple_algeb_sprintf_2 fmt arg1 arg2
+  | [arg1; arg2; arg3]       -> maple_algeb_sprintf_3 fmt arg1 arg2 arg3
+  | [arg1; arg2; arg3; arg4] -> maple_algeb_sprintf_4 fmt arg1 arg2 arg3 arg4
+  | _ -> raise (Invalid_argument "algeb_sprintf_list")
+
+let sprint a = maple_algeb_sprintf_1 "%a" a

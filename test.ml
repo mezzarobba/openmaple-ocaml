@@ -1,3 +1,18 @@
+let test_sprint () =
+  OpenMaple.start_maple ();
+  let a = OpenMaple.eval_statement "x^2+1:"
+  and b = OpenMaple.algeb_of_int 42
+  in
+    List.iter print_string
+      [ OpenMaple.algeb_sprintf "coucou\n" [];
+        OpenMaple.algeb_sprintf "coucou %a\n" [a];
+        OpenMaple.algeb_sprintf "coucou %a %a\n" [a;b];
+        OpenMaple.algeb_sprintf "coucou %a %a %a\n" [a;a;b];
+        OpenMaple.algeb_sprintf "coucou %a %a %a %a\n" [a;b;b;b];
+        OpenMaple.sprint a
+      ];
+    ignore (OpenMaple.algeb_sprintf "erreur" [a;b;b;b;b])
+
 let test_compare_hash () =
   OpenMaple.start_maple ();
   let mylist = List.map OpenMaple.algeb_of_int [5; 4; 3; -1; 0; 10; 2] in

@@ -596,8 +596,54 @@ ToMapleName_stub(value name, value global) {
 #undef MAPLE_TO
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
- * Debug & test
- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */ 
+ * Output to strings
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+
+/* Here I'm deviating from the OpenMaple API by returning OCaml strings while
+ * the C functions return ALGEBs.  Is this a good thing? */
+
+CAMLprim value
+MapleALGEB_SPrintf0_stub(value fmt) {
+    CAMLparam1(fmt);
+    ALGEB res = MapleALGEB_SPrintf0(kv, String_val(fmt));
+    CAMLreturn (caml_copy_string(MapleToString(kv, res)));
+}
+
+CAMLprim value
+MapleALGEB_SPrintf1_stub(value fmt, value arg1) {
+    CAMLparam2(fmt, arg1);
+    ALGEB res = MapleALGEB_SPrintf1(kv, String_val(fmt), ALGEB_val(arg1));
+    CAMLreturn (caml_copy_string(MapleToString(kv, res)));
+}
+
+CAMLprim value
+MapleALGEB_SPrintf2_stub(value fmt, value arg1, value arg2) {
+    CAMLparam3(fmt, arg1, arg2);
+    ALGEB res = MapleALGEB_SPrintf2(kv, String_val(fmt), ALGEB_val(arg1),
+                                                               ALGEB_val(arg2));
+    CAMLreturn (caml_copy_string(MapleToString(kv, res)));
+}
+
+CAMLprim value
+MapleALGEB_SPrintf3_stub(value fmt, value arg1, value arg2, value arg3) {
+    CAMLparam4(fmt, arg1, arg2, arg3);
+    ALGEB res = MapleALGEB_SPrintf3(kv, String_val(fmt), ALGEB_val(arg1),
+                                              ALGEB_val(arg2), ALGEB_val(arg3));
+    CAMLreturn (caml_copy_string(MapleToString(kv, res)));
+}
+
+CAMLprim value
+MapleALGEB_SPrintf4_stub(value fmt, value arg1, value arg2, value arg3, value
+        arg4) {
+    CAMLparam5(fmt, arg1, arg2, arg3, arg4);
+    ALGEB res = MapleALGEB_SPrintf4(kv, String_val(fmt), ALGEB_val(arg1),
+                             ALGEB_val(arg2), ALGEB_val(arg3), ALGEB_val(arg4));
+    CAMLreturn (caml_copy_string(MapleToString(kv, res)));
+}
+
+/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+ * Debugging
+ * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 static char* maple_dag_type[] = {
     "null", "INTNEG", "INTPOS", "RATIONAL", "FLOAT", "HFLOAT", "COMPLEX",
