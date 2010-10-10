@@ -9,9 +9,17 @@ let package = "net.mezzarobba.openmaple-ocaml"
 
 type algeb
 
-exception MapleError of string
+(* Raised by the default error callback to indicate parsing and execution
+ * errors *)
 exception SyntaxError of int * string
+exception MapleError of string
+(* Raised when trying to use the Maple "boolean" FAIL as a Caml boolean *)
 exception BooleanFail
+(* Raised by some conversions from algeb to concrete Caml data types when the
+ * algeb value to be converted does not have the expected type (i.e., in most
+ * cases, when IsMapleFoo() returns false).  Many conversion functions still
+ * raise Failure in this case. *)
+exception TypeError of string
 
 let _ = 
   Callback.register_exception
@@ -22,7 +30,10 @@ let _ =
     (SyntaxError (0, ""));
   Callback.register_exception
     (package ^ ".OpenMaple.BooleanFail")
-    BooleanFail
+    BooleanFail;
+  Callback.register_exception
+    (package ^ ".OpenMaple.TypeError")
+    (TypeError "")
 
 external dbg_print : algeb -> unit = "dbg_print"
 

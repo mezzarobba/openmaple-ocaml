@@ -74,7 +74,12 @@ raise_BooleanFail() {
     caml_raise(*caml_named_value(PACKAGE ".OpenMaple.BooleanFail"));
 }
 
-/* TODO: raiseTypeError */
+static void
+raise_TypeError(char *msg) {
+    caml_raise_with_string(
+            *caml_named_value( PACKAGE ".OpenMaple.TypeError"),
+            msg);
+}
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * Running the Maple kernel
