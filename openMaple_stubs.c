@@ -604,21 +604,49 @@ ToMapleName_stub(value name, value global) {
  * Lists and expression sequences
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#define LIST_LIKE_SELECT(LIST_LIKE, IS_LL) \
+#define DEF_LIST_LIKE(SHORT_NAME, FULL_NAME, NEW) \
     CAMLprim value \
-    Maple ## LIST_LIKE ## Select_stub(value seq, value idx) { \
+    Maple ## SHORT_NAME ## Select_stub(value seq, value idx) { \
         CAMLparam2(seq, idx); \
         ALGEB aseq = ALGEB_val(seq); \
-        if (!IsMaple ## IS_LL (kv, aseq)) \
-            raise_TypeError(#LIST_LIKE); \
-        ALGEB item = Maple ## LIST_LIKE ## Select(kv, aseq, Long_val(idx)); \
+        if (!IsMaple ## FULL_NAME (kv, aseq)) \
+            raise_TypeError(#SHORT_NAME); \
+        ALGEB item = Maple ## SHORT_NAME ## Select(kv, aseq, Long_val(idx)); \
         CAMLreturn (new_ALGEB_wrapper(item)); \
+    } \
+    \
+    CAMLprim value \
+    array_of_ ## SHORT_NAME ## _stub(value val) { \
+        CAMLparam1(val); \
+        CAMLlocal1(res); \
+        ALGEB a = ALGEB_val(val); \
+        if (!IsMaple ## FULL_NAME (kv, a)) \
+            raise_TypeError(#SHORT_NAME); \
+        M_INT nops = MapleNumArgs(kv, a); \
+        /* arrays are represented like tuples */ \
+        res = caml_alloc_tuple(nops); \
+        for (int i = 0; i < nops; i++) \
+            Store_field(res, i, new_ALGEB_wrapper( \
+                        Maple ## SHORT_NAME ## Select(kv, a, i+1))); \
+        CAMLreturn (res); \
+    } \
+    \
+    CAMLprim value \
+    SHORT_NAME ## _of_array_stub(value array) { \
+        CAMLparam1(array); \
+        int n = Wosize_val(array); \
+        ALGEB seq = NEW(kv, n); \
+        for (int i = 0; i < n; i++) \
+            Maple ## SHORT_NAME ## Assign(kv, seq, i+1, \
+                    ALGEB_val(Field(array, i))); \
+        CAMLreturn (new_ALGEB_wrapper(seq)); \
     }
 
-LIST_LIKE_SELECT(List, List)
-LIST_LIKE_SELECT(Expseq, ExpressionSequence)
+DEF_LIST_LIKE(List, List, MapleListAlloc)
+DEF_LIST_LIKE(Expseq, ExpressionSequence, NewMapleExpressionSequence)
 
 #undef LIST_LIKE_SELECT
+
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Output to strings

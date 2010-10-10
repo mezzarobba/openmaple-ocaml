@@ -1,13 +1,27 @@
 let _ =
   OpenMaple.start_maple ();
+  print_string
+    (OpenMaple.sprint
+       (OpenMaple.list_of_arra
+          (Array.map OpenMaple.global_name [| "x"; "y"; "z"; "t" |])));
+  print_newline ();
+  print_string
+    (OpenMaple.sprint
+       (OpenMaple.eval_procedure
+          (OpenMaple.global_name "series")
+          (OpenMaple.expseq_of_array
+             [| OpenMaple.eval_statement "1/(1-x):"; 
+                OpenMaple.global_name "x";
+                OpenMaple.algeb_of_int 6 |])));
+  print_newline ();
   let mylist = OpenMaple.eval_statement ("[1, 2, 3]:")
   and myexpseq = OpenMaple.eval_statement ("a, b, c:")
   in Printf.printf "%s %s\n"
        (OpenMaple.sprint (OpenMaple.list_select mylist 1))
        (OpenMaple.sprint (OpenMaple.expseq_select myexpseq 2));
-  try
-    ignore (OpenMaple.sprint (OpenMaple.expseq_select myexpseq 4))
-  with OpenMaple.MapleError _ -> ()
+     try
+       ignore (OpenMaple.sprint (OpenMaple.expseq_select myexpseq 4))
+     with OpenMaple.MapleError _ -> ()
 
 let test_sprint () =
   OpenMaple.start_maple ();

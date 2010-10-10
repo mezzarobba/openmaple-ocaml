@@ -205,6 +205,12 @@ let fresh_local_name name = to_maple_name name false
 external list_select : algeb -> int -> algeb = "MapleListSelect_stub"
 external expseq_select : algeb -> int -> algeb = "MapleExpseqSelect_stub"
 
+external array_of_expseq : algeb -> algeb array = "array_of_Expseq_stub"
+external array_of_list : algeb -> algeb array = "array_of_List_stub"
+
+external expseq_of_array : algeb array -> algeb = "Expseq_of_array_stub"
+external list_of_array : algeb array -> algeb = "List_of_array_stub"
+
 (* SPrintf *)
 
 external maple_algeb_sprintf_0 : string -> string = "MapleALGEB_SPrintf0_stub"
