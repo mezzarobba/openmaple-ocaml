@@ -82,11 +82,30 @@ let default_read_line_callback dbg =
   print_string (if dbg then "\nDBG ---> " else "\n---> ");
   read_line ()
 
+(* Evaluation *)
+
+external eval : algeb -> algeb = "MapleEval_stub"
+external unique : algeb -> algeb = "MapleUnique_stub"
+(*external name_value : algeb -> algeb = "MapleNameValue_stub"*)
+
+external eval_statement : string -> algeb = "EvalMapleStatement_stub"
+
+external eval_procedure : algeb -> algeb -> algeb = "EvalMapleProcedure_stub"
+external eval_proc : algeb -> algeb array -> algeb = "EvalMapleProc_like_stub"
+let eval_proc_1 = eval_procedure
+let eval_proc_2 proc a b = eval_proc proc [| a; b |]
+let eval_proc_3 proc a b c = eval_proc proc [| a; b; c |]
+let eval_proc_4 proc a b c d = eval_proc proc [| a; b; c; d |]
+
 (* Start/stop/restart *)
 
 external start_maple_doit : string array
   -> (bool * bool * bool * bool * bool * bool * bool * bool)
   -> unit = "StartMaple_stub"
+
+let gc_alarm = ref None
+
+let run_maple_gc () = ignore (eval_statement "gc():")
 
 let start_maple
       ?(argv = [| "maple" |]) (* With argv[0] set to "maple", Maple uses $MAPLE
@@ -101,6 +120,7 @@ let start_maple
       ?(stream_callback    : stream_callback option        = None)
       ?(query_interrupt    : query_interrupt option        = None)
       ?(callback_callback  : callback_callback option      = None)
+      ?(use_gc_alarm = true)
       () =
   let register name = function
     | None -> false
@@ -119,25 +139,20 @@ let start_maple
       register ".queryInterrupt"   query_interrupt,
       register ".callBackCallBack" callback_callback 
     end
-  in start_maple_doit argv callback_mask
+  in
+    start_maple_doit argv callback_mask;
+    gc_alarm := if use_gc_alarm then Some (Gc.create_alarm run_maple_gc)
+                                else None
 
-external stop_maple : unit -> unit = "StopMaple_stub"
+external stop_maple_doit : unit -> unit = "StopMaple_stub"
+
+let stop_maple () =
+  (match !gc_alarm with
+    | Some alarm -> Gc.delete_alarm alarm
+    | None -> ());
+  stop_maple_doit ()
+
 external restart_maple : unit -> unit = "RestartMaple_stub"
-
-(* Evaluation *)
-
-external eval : algeb -> algeb = "MapleEval_stub"
-external unique : algeb -> algeb = "MapleUnique_stub"
-(*external name_value : algeb -> algeb = "MapleNameValue_stub"*)
-
-external eval_statement : string -> algeb = "EvalMapleStatement_stub"
-
-external eval_procedure : algeb -> algeb -> algeb = "EvalMapleProcedure_stub"
-external eval_proc : algeb -> algeb array -> algeb = "EvalMapleProc_like_stub"
-let eval_proc_1 = eval_procedure
-let eval_proc_2 proc a b = eval_proc proc [| a; b |]
-let eval_proc_3 proc a b c = eval_proc proc [| a; b; c |]
-let eval_proc_4 proc a b c d = eval_proc proc [| a; b; c; d |]
 
 (* Raising Maple errors *)
 
