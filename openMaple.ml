@@ -35,7 +35,15 @@ let _ =
     (package ^ ".OpenMaple.TypeError")
     (TypeError "")
 
+let _ =
+  Callback.register
+    (package ^ ".caml_gc_full_major")
+    Gc.full_major
+
+(* Debugging *)
+
 external dbg_print : algeb -> unit = "dbg_print"
+external get_algeb_wrapper_count : unit -> int = "get_ALGEB_wrapper_count"
 
 (* Maple callbacks *)
 
@@ -103,9 +111,17 @@ external start_maple_doit : string array
   -> (bool * bool * bool * bool * bool * bool * bool * bool)
   -> unit = "StartMaple_stub"
 
+external run_maple_gc : unit -> unit = "run_maple_gc"
+
 let gc_alarm = ref None
 
-let run_maple_gc () = ignore (eval_statement "gc():")
+let remove_gc_alarm () =
+  match !gc_alarm with
+    | Some alarm -> Gc.delete_alarm alarm; gc_alarm := None
+    | None -> ()
+
+let create_gc_alarm () =
+    gc_alarm := Some (Gc.create_alarm run_maple_gc)
 
 let start_maple
       ?(argv = [| "maple" |]) (* With argv[0] set to "maple", Maple uses $MAPLE
@@ -141,18 +157,27 @@ let start_maple
     end
   in
     start_maple_doit argv callback_mask;
-    gc_alarm := if use_gc_alarm then Some (Gc.create_alarm run_maple_gc)
-                                else None
+    if use_gc_alarm then create_gc_alarm ()
 
-external stop_maple_doit : unit -> unit = "StopMaple_stub"
+external stop_maple_unsafe_doit : unit -> unit = "StopMaple_unsafe_stub"
+external stop_maple_safe_doit : unit -> unit = "StopMaple_safe_stub"
+
+let stop_maple_unsafe () =
+  remove_gc_alarm ();
+  stop_maple_unsafe_doit ()
 
 let stop_maple () =
-  (match !gc_alarm with
-    | Some alarm -> Gc.delete_alarm alarm
-    | None -> ());
-  stop_maple_doit ()
+  match !gc_alarm with
+    | Some alarm ->
+        (remove_gc_alarm ();
+        try stop_maple_safe_doit ()
+        with Failure msg ->
+          create_gc_alarm ();
+          failwith msg)
+    | None -> stop_maple_safe_doit ()
 
-external restart_maple : unit -> unit = "RestartMaple_stub"
+external restart_maple_unsafe : unit -> unit = "RestartMaple_unsafe_stub"
+external restart_maple : unit -> unit = "RestartMaple_safe_stub"
 
 (* Raising Maple errors *)
 

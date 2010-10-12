@@ -41,6 +41,11 @@
 
 #define PACKAGE "net.mezzarobba.openmaple-ocaml"
 
+#define GET_CLOSURE(CLOSURE, NAME) \
+    static value *CLOSURE = NULL; \
+    if (CLOSURE == NULL) \
+        CLOSURE = caml_named_value(PACKAGE #NAME );
+
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * Caml exceptions
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
@@ -87,6 +92,9 @@ raise_TypeError(char *msg) {
 
 static MKernelVector kv;
 
+/* How many pointers to Maple values we hold */
+static unsigned long ALGEB_wrapper_count = 0;
+
 /* Redirect OpenMaple callbacks to Caml.
  *
  * We ignore the user_data parameters: they are not much use to us, since the
@@ -121,11 +129,6 @@ maple_to_caml_bool(M_BOOL b) {
         raise_BooleanFail();
     CAMLreturn(Val_false); /* prevent warning */
 }
-
-#define GET_CLOSURE(CLOSURE, NAME) \
-    static value *CLOSURE = NULL; \
-    if (CLOSURE == NULL) \
-        CLOSURE = caml_named_value(PACKAGE #NAME );
 
 static void M_DECL
 textCallBack_caml(void *data, int tag, char *output) {
@@ -205,8 +208,6 @@ callBackCallBack_caml(void *data, char *output) {
     return string_or_null(caml_callback(*closure, caml_copy_string(output)));
 } 
 
-#undef GET_CLOSURE
-
 /* void M_DECL
 errorCallBack_raise_caml_exception(void *data, M_INT offset, char *msg) {
     if (offset >= 0)
@@ -239,31 +240,56 @@ StartMaple_stub(value args, value cbmask) {
     char err[err_size];  /* used to report errors during initialization */
     kv = StartMaple(argc, argv, &cb, NULL, NULL, err);
     if (kv == NULL) {
-        const int msg_size = err_size + 25;
+        const char fmt[] = "Unable to start Maple: %s\n";
+        const int msg_size = err_size + sizeof(fmt);
         char msg[msg_size];
-        snprintf(msg, msg_size, "Unable to start Maple: %s\n", err);
+        snprintf(msg, msg_size, fmt, err);
         caml_failwith(msg);
     } 
     CAMLreturn0;
 } 
 
 CAMLprim void
-StopMaple_stub(void) {
+StopMaple_unsafe_stub(void) {
     CAMLparam0 ();
     StopMaple(kv);
     CAMLreturn0;
 }
 
 CAMLprim void
-RestartMaple_stub(void) {
+RestartMaple_unsafe_stub(void) {
     CAMLparam0 ();
-    char err[2048];
+    const int err_size = 2048;
+    char err[err_size];
     if (RestartMaple(kv, err) == FALSE) {
-        // déclencher une exception ?
-        printf("Unable to restart Maple: %s\n", err);
+        const char fmt[] = "restart_maple: error while trying to restart: %s\n";
+        const int msg_size = err_size + sizeof(fmt);
+        char msg[msg_size];
+        snprintf(msg, msg_size, fmt, err);
+        caml_failwith(msg);
     }
     CAMLreturn0;
 }
+
+#define DEF_STOP_RESTART_UNSAFE(ACTION, LC_ACTION) \
+    CAMLprim void \
+    ACTION ## Maple_safe_stub(void) { \
+        CAMLparam0 (); \
+        if (ALGEB_wrapper_count > 0) { \
+            GET_CLOSURE(closure, .caml_gc_full_major); \
+            caml_callback(*closure, Val_int(0)); \
+        } \
+        if (ALGEB_wrapper_count > 0) \
+            caml_failwith(#LC_ACTION "_maple: will not " #LC_ACTION " Maple " \
+                    "with Maple objects still accessible from Caml code"); \
+        ACTION ## Maple_unsafe_stub(); \
+        CAMLreturn0; \
+    }
+
+DEF_STOP_RESTART_UNSAFE(Stop, stop)
+DEF_STOP_RESTART_UNSAFE(Restart, restart)
+
+#undef DEF_STOP_RESTART_UNSAFE
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
  * ALGEBs and ALGEBwrappers
@@ -320,6 +346,7 @@ MaplePointer_to_ALGEB(ALGEB p) {
 
 static void
 finalize_ALGEB_wrapper(value v) {
+    --ALGEB_wrapper_count;
     MapleGcAllow(kv, ALGEB_wrapper_val(v)->ptr);
 }
 
@@ -372,7 +399,24 @@ new_ALGEB_wrapper(ALGEB a) {
     MaplePointerSetMarkFunction(kv, p, &mark_ALGEB);
     ALGEB_wrapper_val(v)->val = a;
     ALGEB_wrapper_val(v)->ptr = p;
+    ++ALGEB_wrapper_count;
     return v;
+}
+
+CAMLprim value
+get_ALGEB_wrapper_count (void) {
+    CAMLparam0 ();
+    CAMLreturn (Val_long(ALGEB_wrapper_count));
+}
+
+/* This function is intended to be called at the end of a Caml GC cycle and must
+ * not create any new ALGEB_wrapper, so that ALGEB_wrapper_count can reach 0 and
+ * that Maple can be restarted safely. */
+CAMLprim void
+run_maple_gc(void) {
+    CAMLparam0 ();
+    EvalMapleStatement(kv, "gc():");
+    CAMLreturn0;
 }
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * 
@@ -746,3 +790,5 @@ ploum(void) {
 }
 
 #endif
+
+#undef GET_CLOSURE
