@@ -113,7 +113,7 @@ maple_to_caml_text_output_tag(int maple_tag) {
         case MAPLE_TEXT_STATUS:  return 6;
         case MAPLE_TEXT_PRETTY:  return 7;
         case MAPLE_TEXT_HELP:    return 8;
-        case MAPLE_TEXT_DEBUG :  return 9;
+        case MAPLE_TEXT_DEBUG:   return 9;
         default: caml_failwith("unknown text output tag");
     }
 }
@@ -440,7 +440,7 @@ MAPLE_EVAL_LIKE(Unique)
 
 /* Semble utile pour récupérer la valeur associée à un nom, mais ne renvoie pas
  * toujours un ALGEB valide, même quand assigned(v)==TRUE. (Je présume que c'est
- * une histoire de valeurs pas encore chargées depuis une bibliothèqe, ou un
+ * une histoire de valeurs pas encore chargées depuis une bibliothèque, ou un
  * truc comme ça. Et je ne sais pas tester... */
 /* MAPLE_EVAL_LIKE(NameValue) */
 
