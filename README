@@ -1,0 +1,5 @@
+Description: a simple Ocaml wrapper for the OpenMaple[1] API
+Status: pre-alpha
+Licence: public domain
+
+[1] http://www.maplesoft.com/support/help/Maple/view.aspx?path=OpenMaple
